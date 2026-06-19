@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env
+*.log
+.claude/
+
+# 개인 데이터 — 커밋하지 않음
+backend/src/data/userProfile.json
+backend/src/data/jobPostings.json

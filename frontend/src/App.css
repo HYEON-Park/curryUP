@@ -1,0 +1,158 @@
+nav a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+form label {
+  display: block;
+  margin-bottom: 14px;
+  font-weight: 500;
+}
+
+form input,
+form textarea {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 10px;
+  font: inherit;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+form input[type="checkbox"] {
+  display: inline-block;
+  width: auto;
+  margin: 0 6px 0 0;
+}
+
+fieldset {
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 16px;
+}
+
+fieldset label {
+  margin-bottom: 8px;
+}
+
+button[type="submit"] {
+  font: inherit;
+  padding: 8px 20px;
+  border-radius: 6px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+.job-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  padding: 0 16px;
+}
+
+.job-card {
+  display: block;
+  position: relative;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-align: left;
+  text-decoration: none;
+  color: var(--text-h);
+}
+
+.job-card h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.job-card p {
+  margin: 0 0 24px;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 145%;
+}
+
+.job-card .dday {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.pagination button {
+  font: inherit;
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.pagination button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.job-detail {
+  max-width: 640px;
+  margin: 0 auto;
+  text-align: left;
+  padding: 0 16px;
+}
+
+.source-link {
+  display: inline-block;
+  margin: 8px 0 20px;
+  color: var(--accent);
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tabs button {
+  font: inherit;
+  padding: 8px 14px;
+  border: none;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.tabs button.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.doc-content {
+  white-space: pre-wrap;
+  font-family: var(--sans);
+  line-height: 165%;
+  background: var(--code-bg);
+  padding: 16px;
+  border-radius: 8px;
+}
