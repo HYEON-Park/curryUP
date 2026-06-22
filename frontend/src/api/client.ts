@@ -1,6 +1,6 @@
 import type { JobPosting, JobsPage, UserProfile } from "../types";
 
-const BASE_URL = "http://localhost:4000/api";
+const BASE_URL = "/api";
 
 export async function fetchProfile(): Promise<UserProfile> {
   const res = await fetch(`${BASE_URL}/profile`);
@@ -23,5 +23,11 @@ export async function fetchJobs(page: number): Promise<JobsPage> {
 
 export async function fetchJobDetail(id: string): Promise<JobPosting> {
   const res = await fetch(`${BASE_URL}/jobs/${id}`);
+  return res.json();
+}
+
+export async function triggerCollect(): Promise<{ collected: number; newlyMatched: number }> {
+  const res = await fetch(`${BASE_URL}/collect`, { method: "POST" });
+  if (!res.ok) throw new Error("수집 요청이 실패했습니다.");
   return res.json();
 }

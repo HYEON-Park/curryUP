@@ -1,27 +1,34 @@
 import cron from "node-cron";
 import notifier from "node-notifier";
 import { getProfile } from "../data/store.js";
+import { catchUpIfMissed, runDailyJob } from "./runLog.js";
+
+const SCHEDULED_HOUR = 9;
+const SCHEDULED_MINUTE = 30;
+
+async function notifyTask(): Promise<void> {
+  const profile = await getProfile();
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const updatedToday = profile.lastProfileUpdate
+    ? new Date(profile.lastProfileUpdate) >= todayStart
+    : false;
+
+  if (updatedToday) return;
+
+  notifier.notify({
+    title: "프로필 업데이트 요청",
+    message: "오늘 수집된 공고에 맞춰 프로필 정보를 최신으로 유지해주세요.",
+  });
+}
 
 // 매일 09:30, 당일 00:00~09:29 사이 프로필을 수정하지 않았다면 알림 (PRD 3.3)
 export function startNotifyJob(): void {
-  cron.schedule("30 9 * * *", async () => {
-    try {
-      const profile = await getProfile();
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
+  cron.schedule(`${SCHEDULED_MINUTE} ${SCHEDULED_HOUR} * * *`, () => runDailyJob("notify", notifyTask));
+}
 
-      const updatedToday = profile.lastProfileUpdate
-        ? new Date(profile.lastProfileUpdate) >= todayStart
-        : false;
-
-      if (updatedToday) return;
-
-      notifier.notify({
-        title: "프로필 업데이트 요청",
-        message: "오늘 수집된 공고에 맞춰 프로필 정보를 최신으로 유지해주세요.",
-      });
-    } catch (error) {
-      console.error("[notifyJob] failed:", error);
-    }
-  });
+// 백엔드가 09:30 이후에 켜졌고 당일 알림 처리 기록이 없다면 즉시 따라잡는다.
+export function catchUpNotifyJob(): Promise<void> {
+  return catchUpIfMissed("notify", SCHEDULED_HOUR, SCHEDULED_MINUTE, notifyTask);
 }
