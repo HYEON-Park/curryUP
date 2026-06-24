@@ -12,6 +12,11 @@ const REPLACEMENTS: [RegExp, string][] = [
   [/혁신적으로/g, "참신하게"],
   [/혁신/g, "변화"],
   [/시너지/g, "협업 효과"],
+  [/완벽하게/g, "꼼꼼하게"],
+  [/완벽한/g, "꼼꼼한"],
+  [/완벽히/g, "꼼꼼히"],
+  [/완벽함/g, "꼼꼼함"],
+  [/완벽/g, "꼼꼼함"],
 ];
 
 export function stripBannedWords(text: string): string {

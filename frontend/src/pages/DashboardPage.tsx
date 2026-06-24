@@ -4,6 +4,12 @@ import { fetchJobs, triggerCollect } from "../api/client";
 import type { JobPosting } from "../types";
 import { formatDday } from "../utils/dday";
 
+function sourceLabel(sourceUrl: string): string {
+  if (sourceUrl.includes("jobkorea.co.kr")) return "J";
+  if (sourceUrl.includes("saramin.co.kr")) return "S";
+  return "?";
+}
+
 export function DashboardPage() {
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<JobPosting[]>([]);
@@ -53,6 +59,7 @@ export function DashboardPage() {
           <div className="job-grid">
             {items.map((job) => (
               <Link key={job.id} to={`/jobs/${job.id}`} className="job-card">
+                <span className="job-source">{sourceLabel(job.sourceUrl)}</span>
                 <h3>{job.company}</h3>
                 <p>
                   {job.location}

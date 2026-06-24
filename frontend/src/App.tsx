@@ -1,6 +1,7 @@
 import { Link, Route, Routes } from "react-router-dom";
 import { DashboardPage } from "./pages/DashboardPage";
 import { JobDetailPage } from "./pages/JobDetailPage";
+import { ProfileViewPage } from "./pages/ProfileViewPage";
 import { ProfileEditPage } from "./pages/ProfileEditPage";
 import "./App.css";
 
@@ -14,7 +15,8 @@ function App() {
       <Routes>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/jobs/:id" element={<JobDetailPage />} />
-        <Route path="/profile" element={<ProfileEditPage />} />
+        <Route path="/profile" element={<ProfileViewPage />} />
+        <Route path="/profile/edit" element={<ProfileEditPage />} />
       </Routes>
     </div>
   );

@@ -1,6 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { fetchProfile, saveProfile } from "../api/client";
-import { ROLE_CATEGORIES, ROLE_QUESTIONS, type UserProfile } from "../types";
+import { ROLE_QUESTIONS, type UserProfile } from "../types";
+import { TagInput } from "../components/TagInput";
+import { AutoResizeTextarea } from "../components/AutoResizeTextarea";
+import { LocationPicker } from "../components/LocationPicker";
+import { JobCategoryPicker } from "../components/JobCategoryPicker";
 
 const EMPTY_PROFILE: UserProfile = {
   yearsOfExperience: null,
@@ -13,58 +18,82 @@ const EMPTY_PROFILE: UserProfile = {
   lastProfileUpdate: null,
 };
 
-function listToText(list: string[]): string {
-  return list.join(", ");
-}
+const UNSAVED_CHANGES_MESSAGE = "변경 사항이 저장되지 않을 수 있습니다. 나가시겠습니까?";
 
-function textToList(text: string): string[] {
-  return text
-    .split(",")
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
+function snapshotOf(profile: UserProfile) {
+  return JSON.stringify({ ...profile, lastProfileUpdate: null });
 }
 
 export function ProfileEditPage() {
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfile>(EMPTY_PROFILE);
-  // 쉼표로 구분되는 필드는 입력 중에 배열로 왕복 변환하면 트레일링 쉼표가
-  // 즉시 사라져 입력이 막힌 것처럼 보인다. 입력 중엔 원본 텍스트를 그대로 두고
-  // 저장 시점에만 배열로 변환한다.
-  const [skillsText, setSkillsText] = useState("");
-  const [certificationsText, setCertificationsText] = useState("");
-  const [locationsText, setLocationsText] = useState("");
-  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [initialSnapshot, setInitialSnapshot] = useState<string | null>(null);
+  const isDirtyRef = useRef(false);
+  const dirty = initialSnapshot !== null && initialSnapshot !== snapshotOf(profile);
+
+  useEffect(() => {
+    isDirtyRef.current = dirty;
+  }, [dirty]);
 
   useEffect(() => {
     fetchProfile().then((data) => {
       setProfile(data);
-      setSkillsText(listToText(data.skills));
-      setCertificationsText(listToText(data.certifications));
-      setLocationsText(listToText(data.locations));
+      setInitialSnapshot(snapshotOf(data));
     });
   }, []);
 
-  function toggleRoleCategory(category: string) {
-    setProfile((prev) => ({
-      ...prev,
-      desiredRoleCategories: prev.desiredRoleCategories.includes(category)
-        ? prev.desiredRoleCategories.filter((c) => c !== category)
-        : [...prev.desiredRoleCategories, category],
-    }));
+  // 뒤로가기로 이탈을 시도하면 더미 히스토리 엔트리를 소비시켜 confirm을 띄우고,
+  // 취소하면 같은 더미 엔트리를 다시 쌓아 이탈을 무효화한다.
+  useEffect(() => {
+    window.history.pushState(null, "", window.location.href);
+    function handlePopState() {
+      if (isDirtyRef.current && !window.confirm(UNSAVED_CHANGES_MESSAGE)) {
+        window.history.pushState(null, "", window.location.href);
+        return;
+      }
+      navigate("/profile");
+    }
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [navigate]);
+
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (isDirtyRef.current) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
+
+  function validate(): string | null {
+    if (profile.yearsOfExperience !== null && profile.yearsOfExperience < 0) {
+      return "경력 연차는 0 이상이어야 합니다.";
+    }
+    return null;
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const updated = await saveProfile({
-      ...profile,
-      skills: textToList(skillsText),
-      certifications: textToList(certificationsText),
-      locations: textToList(locationsText),
-    });
-    setProfile(updated);
-    setSkillsText(listToText(updated.skills));
-    setCertificationsText(listToText(updated.certifications));
-    setLocationsText(listToText(updated.locations));
-    setSaved(true);
+    const validationError = validate();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    setError(null);
+    await saveProfile(profile);
+    navigate("/profile");
+  }
+
+  function handleCancel() {
+    if (dirty && !window.confirm(UNSAVED_CHANGES_MESSAGE)) {
+      return;
+    }
+    navigate("/profile");
   }
 
   const activeQuestions = profile.desiredRoleCategories.flatMap(
@@ -72,8 +101,8 @@ export function ProfileEditPage() {
   );
 
   return (
-    <form onSubmit={handleSubmit} style={{ maxWidth: 560, margin: "0 auto", textAlign: "left" }}>
-      <h2>내 프로필</h2>
+    <form onSubmit={handleSubmit} className="profile-edit-form">
+      <h2>프로필 수정</h2>
 
       <label>
         경력 (년차)
@@ -82,47 +111,56 @@ export function ProfileEditPage() {
           min={0}
           value={profile.yearsOfExperience ?? ""}
           onChange={(e) =>
-            setProfile({ ...profile, yearsOfExperience: e.target.value ? Number(e.target.value) : null })
+            setProfile({
+              ...profile,
+              yearsOfExperience: e.target.value ? Math.max(0, Number(e.target.value)) : null,
+            })
           }
         />
       </label>
 
       <label>
-        기술 스택 (쉼표로 구분)
-        <input value={skillsText} onChange={(e) => setSkillsText(e.target.value)} />
-      </label>
-
-      <label>
-        경력 사항
-        <textarea
-          rows={4}
-          value={profile.careerHistory}
-          onChange={(e) => setProfile({ ...profile, careerHistory: e.target.value })}
+        기술 스택
+        <TagInput
+          value={profile.skills}
+          onChange={(skills) => setProfile({ ...profile, skills })}
+          placeholder="입력 후 Enter 또는 쉼표"
         />
       </label>
 
       <label>
-        보유 자격증 (쉼표로 구분)
-        <input value={certificationsText} onChange={(e) => setCertificationsText(e.target.value)} />
+        경력 사항
+        <AutoResizeTextarea
+          value={profile.careerHistory}
+          onChange={(careerHistory) => setProfile({ ...profile, careerHistory })}
+        />
       </label>
 
       <label>
-        근무지 (쉼표로 구분, 예: 서울 강남구)
-        <input value={locationsText} onChange={(e) => setLocationsText(e.target.value)} />
+        보유 자격증
+        <TagInput
+          value={profile.certifications}
+          onChange={(certifications) => setProfile({ ...profile, certifications })}
+          placeholder="입력 후 Enter 또는 쉼표"
+        />
+      </label>
+
+      <label>
+        근무지
+        <LocationPicker
+          value={profile.locations}
+          onChange={(locations) => setProfile({ ...profile, locations })}
+        />
       </label>
 
       <fieldset>
         <legend>희망 직무 카테고리</legend>
-        {ROLE_CATEGORIES.map((category) => (
-          <label key={category} style={{ display: "block" }}>
-            <input
-              type="checkbox"
-              checked={profile.desiredRoleCategories.includes(category)}
-              onChange={() => toggleRoleCategory(category)}
-            />
-            {category}
-          </label>
-        ))}
+        <JobCategoryPicker
+          selected={profile.desiredRoleCategories}
+          onChange={(desiredRoleCategories) => setProfile({ ...profile, desiredRoleCategories })}
+          skills={profile.skills}
+          onSkillsChange={(skills) => setProfile({ ...profile, skills })}
+        />
       </fieldset>
 
       {activeQuestions.length > 0 && (
@@ -145,8 +183,14 @@ export function ProfileEditPage() {
         </fieldset>
       )}
 
-      <button type="submit">저장</button>
-      {saved && <span style={{ marginLeft: 8 }}>저장됨</span>}
+      {error && <p className="profile-error">{error}</p>}
+
+      <div className="form-actions">
+        <button type="button" className="secondary" onClick={handleCancel}>
+          취소
+        </button>
+        <button type="submit">저장</button>
+      </div>
     </form>
   );
 }

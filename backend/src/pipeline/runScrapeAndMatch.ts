@@ -14,6 +14,7 @@ export async function runScrapeAndMatch(): Promise<{ collected: number; newlyMat
   const profile = await getProfile();
   const existingJobs = await getJobPostings();
   const existingById = new Map(existingJobs.map((job) => [job.id, job]));
+  const knownSourceUrls = new Set(existingJobs.map((job) => job.sourceUrl));
 
   let collected = 0;
   let newlyMatched = 0;
@@ -25,7 +26,7 @@ export async function runScrapeAndMatch(): Promise<{ collected: number; newlyMat
       continue;
     }
 
-    const postings = await scraper.fetchPostings(url);
+    const postings = await scraper.fetchPostings(url, knownSourceUrls);
     collected += postings.length;
 
     for (const posting of postings) {

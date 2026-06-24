@@ -29,7 +29,7 @@ export const SaraminScraper: Scraper = {
     return url.includes("saramin.co.kr");
   },
 
-  async fetchPostings(url: string): Promise<Omit<JobPosting, "id" | "documents">[]> {
+  async fetchPostings(url: string, _knownSourceUrls: ReadonlySet<string>): Promise<Omit<JobPosting, "id" | "documents">[]> {
     const response = await axios.get<string>(url, {
       headers: { "User-Agent": USER_AGENT },
       timeout: 20000,
@@ -62,8 +62,13 @@ export const SaraminScraper: Scraper = {
         .get()
         .filter((text) => text.length > 0);
 
+      const sourceUrl = new URL(href, BASE_URL);
+      // search_uuid는 검색 세션마다 새로 발급되는 추적용 값이라, 같은 공고를 매번 다른 URL로
+      // 만들어 중복 수집 방지용 ID(sourceUrl 해시)가 무력화된다. 안정적인 ID를 위해 제거한다.
+      sourceUrl.searchParams.delete("search_uuid");
+
       postings.push({
-        sourceUrl: new URL(href, BASE_URL).toString(),
+        sourceUrl: sourceUrl.toString(),
         company,
         title,
         location,

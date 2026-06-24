@@ -1,10 +1,11 @@
 import cron from "node-cron";
-import notifier from "node-notifier";
 import { getProfile } from "../data/store.js";
+import { notifyWithLink } from "../notify/osNotifier.js";
 import { catchUpIfMissed, runDailyJob } from "./runLog.js";
 
 const SCHEDULED_HOUR = 9;
 const SCHEDULED_MINUTE = 30;
+const PORT = process.env.PORT || 4000;
 
 async function notifyTask(): Promise<void> {
   const profile = await getProfile();
@@ -17,9 +18,10 @@ async function notifyTask(): Promise<void> {
 
   if (updatedToday) return;
 
-  notifier.notify({
+  notifyWithLink({
     title: "프로필 업데이트 요청",
     message: "오늘 수집된 공고에 맞춰 프로필 정보를 최신으로 유지해주세요.",
+    url: `http://localhost:${PORT}/profile`,
   });
 }
 
