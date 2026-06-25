@@ -7,6 +7,9 @@ export interface UserProfile {
   desiredRoleCategories: string[];
   roleAnswers: Record<string, string>;
   lastProfileUpdate: string | null;
+  sideProjects?: string;
+  learningStack?: string;
+  aiToolUsage?: string;
 }
 
 export interface GeneratedDocuments {
@@ -33,6 +36,31 @@ export interface JobPosting {
 
 export interface JobsPage {
   items: JobPosting[];
+  page: number;
+  totalPages: number;
+  totalItems: number;
+}
+
+export interface RunProgress {
+  total: number;
+  completed: number;
+  currentTitle: string | null;
+}
+
+export interface RunRecord {
+  id: string;
+  jobName: string;
+  trigger: "scheduled" | "manual";
+  date: string;
+  startedAt: string;
+  finishedAt: string | null;
+  status: "running" | "success" | "failed";
+  error?: string;
+  progress?: RunProgress;
+}
+
+export interface RunsPage {
+  items: RunRecord[];
   page: number;
   totalPages: number;
   totalItems: number;

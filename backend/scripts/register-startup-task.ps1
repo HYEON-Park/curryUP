@@ -1,4 +1,4 @@
-# Windows 로그온 시 backend 서버(start-server.cmd)를 자동 실행하도록 등록한다.
+﻿# Windows 로그온 시 backend 서버(start-server.cmd)를 자동 실행하도록 등록한다.
 # 실행 전 backend에서 `npm run build`로 dist/를 먼저 만들어 두어야 한다.
 # 사용: powershell -ExecutionPolicy Bypass -File .\scripts\register-startup-task.ps1
 # 제거: schtasks /delete /tn CurryUpBackend /f

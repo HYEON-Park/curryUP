@@ -27,8 +27,14 @@ function pickRoleCategory(tags: string[]): string | null {
   return tags[0] ?? null;
 }
 
-function parseRequiredYears(careerText: string): { min: number; max: number } | null {
+function parseRequiredYears(careerText: string, title: string): { min: number; max: number } | null {
   const text = careerText.trim();
+  const mentionsEntry = text.includes("신입") || title.includes("신입");
+  const mentionsExperienced = text.includes("경력") || title.includes("경력");
+  // 경력 조건 칸이 "경력무관"처럼 모호해도 제목에 "신입"만 있고 "경력" 언급이 전혀
+  // 없으면 신입 전용 채용으로 간주한다. "신입·경력"처럼 함께 쓰인 경우는 경력자도
+  // 지원 가능하므로 제한하지 않는다.
+  if (mentionsEntry && !mentionsExperienced) return { min: 0, max: 0 };
   if (text.includes("무관")) return null;
 
   const atLeastMatch = text.match(/(\d+)\s*년\s*↑/);
@@ -95,9 +101,50 @@ function extractDeadline(rscText: string): string | null {
   return `~ ${month}/${day}(${weekday})`;
 }
 
+const RESPONSIBILITIES_MAX_LENGTH = 2000;
+
+// 회사마다 공고 본문 템플릿(일반 단락, 카드형, 표 기반 등)이 전부 달라서 "담당업무"
+// 같은 특정 제목 태그를 정규식으로 찾는 방식은 회사별로 깨진다. 대신 RSC 조각 중
+// 한글 비중이 높고 HTML 태그를 포함한(=실제 본문이 들어있는) 조각을 찾아 태그만
+// 벗겨내면 템플릿과 무관하게 본문 텍스트를 얻을 수 있다.
+function extractResponsibilities(html: string): string | null {
+  const pushRe = /self\.__next_f\.push\(\[1,"((?:[^"\\]|\\.)*)"\]\)/g;
+  let match: RegExpExecArray | null;
+  let bestChunk = "";
+
+  while ((match = pushRe.exec(html))) {
+    let decoded: string;
+    try {
+      decoded = JSON.parse(`"${match[1]}"`);
+    } catch {
+      continue;
+    }
+    const koreanCount = (decoded.match(/[가-힣]/g) || []).length;
+    const hasHtml = /<(p|div|table|br|li)[\s>]/i.test(decoded);
+    if (koreanCount > 80 && hasHtml && decoded.length > bestChunk.length) bestChunk = decoded;
+  }
+
+  if (!bestChunk) return null;
+
+  const text = bestChunk
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|tr|li|h[1-6])>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/[ \t]+/g, " ")
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .join("\n");
+
+  return text.slice(0, RESPONSIBILITIES_MAX_LENGTH) || null;
+}
+
 async function fetchDetail(
   gno: string
-): Promise<{ skills: string[]; deadline: string | null } | null> {
+): Promise<{ skills: string[]; deadline: string | null; responsibilities: string | null } | null> {
   try {
     const response = await axios.get<string>(`${BASE_URL}/Recruit/GI_Read_Comt_Ifrm`, {
       params: { Gno: gno, isHiringCenter: "false", hideMapView: "false" },
@@ -108,6 +155,7 @@ async function fetchDetail(
     return {
       skills: extractDetailSkills(rscText),
       deadline: extractDeadline(rscText),
+      responsibilities: extractResponsibilities(response.data),
     };
   } catch (error) {
     console.warn(`[JobKoreaScraper] detail fetch failed for Gno=${gno}:`, error);
@@ -119,6 +167,57 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// 검색결과 한 페이지만 보면 그 순간 노출된 공고만 잡혀, 사이트에 더 있는 공고를
+// 놓친다. 여러 페이지를 순회해 더 폭넓게 모은다.
+const MAX_PAGES = 5;
+
+function parsePage($: cheerio.CheerioAPI): Omit<JobPosting, "id" | "documents">[] {
+  const postings: Omit<JobPosting, "id" | "documents">[] = [];
+
+  $('[data-sentry-component="CardJob"]').each((_, el) => {
+    const card = $(el);
+    const titleLink = card.find('a[data-sentry-component="Title"]').first();
+    const title = titleLink.text().trim();
+    const href = titleLink.attr("href");
+    if (!title || !href) return;
+
+    const company = card.find("span.text-gray700.text-typo-b2-16").first().text().trim();
+
+    const chips = card
+      .find('[data-sentry-component="GrayChip"]')
+      .map((__, chip) => $(chip).text().trim())
+      .get();
+    const location = chips[0] ?? "";
+    const tags = chips
+      .slice(1)
+      .flatMap((chip) => chip.split(","))
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0);
+
+    const careerText = card.find("span.flex-shrink-0.text-gray700").first().text().trim();
+
+    // 상세 URL의 조회 출처/검색어 등 추적 파라미터를 제거해, 검색어가 바뀔 때마다
+    // 같은 공고가 다른 URL로 잡혀 중복 수집되는 것을 방지한다.
+    const sourceUrl = new URL(href, BASE_URL);
+    sourceUrl.search = "";
+
+    postings.push({
+      sourceUrl: sourceUrl.toString(),
+      company,
+      title,
+      location,
+      deadline: null,
+      requiredYears: parseRequiredYears(careerText, title),
+      skills: tags,
+      roleCategory: pickRoleCategory(tags),
+      description: tags.join(", "),
+      collectedAt: new Date().toISOString(),
+    });
+  });
+
+  return postings;
+}
+
 export const JobKoreaScraper: Scraper = {
   canHandle(url: string): boolean {
     return url.includes("jobkorea.co.kr");
@@ -128,53 +227,32 @@ export const JobKoreaScraper: Scraper = {
     url: string,
     knownSourceUrls: ReadonlySet<string>
   ): Promise<Omit<JobPosting, "id" | "documents">[]> {
-    const response = await axios.get<string>(url, {
-      headers: { "User-Agent": USER_AGENT },
-      timeout: 20000,
-    });
-    const $ = cheerio.load(response.data);
     const postings: Omit<JobPosting, "id" | "documents">[] = [];
+    const seen = new Set<string>();
 
-    $('[data-sentry-component="CardJob"]').each((_, el) => {
-      const card = $(el);
-      const titleLink = card.find('a[data-sentry-component="Title"]').first();
-      const title = titleLink.text().trim();
-      const href = titleLink.attr("href");
-      if (!title || !href) return;
+    for (let page = 1; page <= MAX_PAGES; page++) {
+      const pageUrl = new URL(url);
+      pageUrl.searchParams.set("Page_No", String(page));
 
-      const company = card.find("span.text-gray700.text-typo-b2-16").first().text().trim();
-
-      const chips = card
-        .find('[data-sentry-component="GrayChip"]')
-        .map((__, chip) => $(chip).text().trim())
-        .get();
-      const location = chips[0] ?? "";
-      const tags = chips
-        .slice(1)
-        .flatMap((chip) => chip.split(","))
-        .map((tag) => tag.trim())
-        .filter((tag) => tag.length > 0);
-
-      const careerText = card.find("span.flex-shrink-0.text-gray700").first().text().trim();
-
-      // 상세 URL의 조회 출처/검색어 등 추적 파라미터를 제거해, 검색어가 바뀔 때마다
-      // 같은 공고가 다른 URL로 잡혀 중복 수집되는 것을 방지한다.
-      const sourceUrl = new URL(href, BASE_URL);
-      sourceUrl.search = "";
-
-      postings.push({
-        sourceUrl: sourceUrl.toString(),
-        company,
-        title,
-        location,
-        deadline: null,
-        requiredYears: parseRequiredYears(careerText),
-        skills: tags,
-        roleCategory: pickRoleCategory(tags),
-        description: tags.join(", "),
-        collectedAt: new Date().toISOString(),
+      const response = await axios.get<string>(pageUrl.toString(), {
+        headers: { "User-Agent": USER_AGENT },
+        timeout: 20000,
       });
-    });
+      const pagePostings = parsePage(cheerio.load(response.data));
+      if (pagePostings.length === 0) break;
+
+      let newOnThisPage = 0;
+      for (const posting of pagePostings) {
+        if (seen.has(posting.sourceUrl)) continue;
+        seen.add(posting.sourceUrl);
+        postings.push(posting);
+        if (!knownSourceUrls.has(posting.sourceUrl)) newOnThisPage++;
+      }
+
+      // 이 페이지에 새 공고가 하나도 없으면 이미 아는 영역에 도달한 것이므로 멈춘다.
+      if (newOnThisPage === 0) break;
+      if (page < MAX_PAGES) await sleep(300);
+    }
 
     // 상세 페이지는 공고당 추가 요청이 필요해 무겁다. 이미 수집된 공고는 다시 들어가지
     // 않고, 새 공고만 순차적으로(서버에 부담을 덜 주도록 약간의 지연을 두고) 조회한다.
@@ -192,6 +270,9 @@ export const JobKoreaScraper: Scraper = {
         }
         if (detail.deadline) {
           posting.deadline = detail.deadline;
+        }
+        if (detail.responsibilities) {
+          posting.responsibilities = detail.responsibilities;
         }
       }
       await sleep(250);

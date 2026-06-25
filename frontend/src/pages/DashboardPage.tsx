@@ -14,6 +14,7 @@ export function DashboardPage() {
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<JobPosting[]>([]);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [collecting, setCollecting] = useState(false);
   const [collectStatus, setCollectStatus] = useState<string | null>(null);
 
@@ -21,6 +22,7 @@ export function DashboardPage() {
     fetchJobs(page).then((data) => {
       setItems(data.items);
       setTotalPages(data.totalPages);
+      setTotalItems(data.totalItems);
     });
   }, [page]);
 
@@ -36,6 +38,7 @@ export function DashboardPage() {
       setPage(1);
       setItems(data.items);
       setTotalPages(data.totalPages);
+      setTotalItems(data.totalItems);
     } catch {
       setCollectStatus("수집 실패");
     } finally {
@@ -48,7 +51,7 @@ export function DashboardPage() {
       <div className="dashboard-toolbar">
         {collectStatus && <span>{collectStatus}</span>}
         <button onClick={handleCollect} disabled={collecting}>
-          {collecting ? "UPDATE 중..." : "UPDATE"}
+          {collecting ? "공고업데이트 중..." : "공고업데이트"}
         </button>
       </div>
 
@@ -82,6 +85,7 @@ export function DashboardPage() {
               <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
                 다음
               </button>
+              <span className="pagination-total">(총 {totalItems}개)</span>
             </div>
           )}
         </>

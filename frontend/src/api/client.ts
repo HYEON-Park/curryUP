@@ -1,4 +1,4 @@
-import type { JobPosting, JobsPage, UserProfile } from "../types";
+import type { JobPosting, JobsPage, RunRecord, RunsPage, UserProfile } from "../types";
 
 const BASE_URL = "/api";
 
@@ -29,5 +29,28 @@ export async function fetchJobDetail(id: string): Promise<JobPosting> {
 export async function triggerCollect(): Promise<{ collected: number; newlyMatched: number }> {
   const res = await fetch(`${BASE_URL}/collect`, { method: "POST" });
   if (!res.ok) throw new Error("수집 요청이 실패했습니다.");
+  return res.json();
+}
+
+export async function fetchRuns(page: number): Promise<RunsPage> {
+  const res = await fetch(`${BASE_URL}/admin/runs?page=${page}`);
+  return res.json();
+}
+
+export async function runScrapeBatch(scope: "today" | "all"): Promise<RunRecord> {
+  const res = await fetch(`${BASE_URL}/admin/scrape/run?scope=${scope}`, { method: "POST" });
+  if (!res.ok) throw new Error("스크래핑 배치 실행에 실패했습니다.");
+  return res.json();
+}
+
+export async function runNotifyBatch(): Promise<RunRecord> {
+  const res = await fetch(`${BASE_URL}/admin/notify/run`, { method: "POST" });
+  if (!res.ok) throw new Error("알림 배치 실행에 실패했습니다.");
+  return res.json();
+}
+
+export async function runAiBatch(): Promise<{ started: boolean }> {
+  const res = await fetch(`${BASE_URL}/admin/ai/run`, { method: "POST" });
+  if (!res.ok) throw new Error("AI 배치 실행에 실패했습니다.");
   return res.json();
 }

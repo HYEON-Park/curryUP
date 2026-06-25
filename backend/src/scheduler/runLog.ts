@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -5,6 +6,10 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RUN_LOG_PATH = path.join(__dirname, "../data/runLog.json");
 
+// 관리자 페이지 실행 이력 보존 기간.
+const RETENTION_DAYS = 20;
+
+export type RunTrigger = "scheduled" | "manual";
 type RunStatus = "running" | "success" | "failed";
 
 export interface RunProgress {
@@ -14,14 +19,23 @@ export interface RunProgress {
 }
 
 export interface RunRecord {
+  id: string;
+  jobName: string;
+  trigger: RunTrigger;
   date: string;
   startedAt: string;
   finishedAt: string | null;
   status: RunStatus;
+  error?: string;
   progress?: RunProgress;
 }
 
-type RunLog = Record<string, RunRecord>;
+export interface RunHistoryPage {
+  items: RunRecord[];
+  page: number;
+  totalPages: number;
+  totalItems: number;
+}
 
 function todayKey(): string {
   const now = new Date();
@@ -31,57 +45,109 @@ function todayKey(): string {
   return `${year}-${month}-${day}`;
 }
 
-async function readLog(): Promise<RunLog> {
+async function readLog(): Promise<RunRecord[]> {
   try {
     const raw = await fs.readFile(RUN_LOG_PATH, "utf-8");
-    return JSON.parse(raw) as RunLog;
+    return JSON.parse(raw) as RunRecord[];
   } catch {
-    return {};
+    return [];
   }
 }
 
-async function writeLog(log: RunLog): Promise<void> {
-  await fs.writeFile(RUN_LOG_PATH, JSON.stringify(log, null, 2), "utf-8");
+// 매 write마다 오래된 이력을 정리해, runLog.json이 무한히 커지지 않게 한다.
+function pruneOldRecords(log: RunRecord[]): RunRecord[] {
+  const cutoff = Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000;
+  return log.filter((record) => new Date(record.startedAt).getTime() >= cutoff);
+}
+
+async function writeLog(log: RunRecord[]): Promise<void> {
+  await fs.writeFile(RUN_LOG_PATH, JSON.stringify(pruneOldRecords(log), null, 2), "utf-8");
+}
+
+// 서버가 비정상 종료되면 "running" 상태로 멈춘 레코드가 영원히 남는다.
+// 다음 기동 시점에 그런 레코드를 failed로 정리해, 관리자 페이지에 좀비 "진행중" 행이 보이지 않게 한다.
+export async function reconcileInterruptedRuns(): Promise<void> {
+  const log = await readLog();
+  const now = new Date().toISOString();
+  let changed = false;
+  for (const record of log) {
+    if (record.status === "running") {
+      record.status = "failed";
+      record.finishedAt = now;
+      record.error = "서버 재시작으로 중단됨";
+      changed = true;
+    }
+  }
+  if (changed) await writeLog(log);
 }
 
 export async function hasRunToday(jobName: string): Promise<boolean> {
   const log = await readLog();
-  return log[jobName]?.date === todayKey();
+  return log.some((record) => record.jobName === jobName && record.date === todayKey());
 }
 
-export async function getRunRecord(jobName: string): Promise<RunRecord | undefined> {
-  const log = await readLog();
-  return log[jobName];
+async function recordRun(jobName: string, trigger: RunTrigger, task: () => Promise<void>): Promise<RunRecord> {
+  const id = randomUUID();
+  const startedAt = new Date().toISOString();
+  console.log(`[runLog] ${jobName} 처리 시작 (${trigger}): ${startedAt}`);
+
+  let log = await readLog();
+  let record: RunRecord = { id, jobName, trigger, date: todayKey(), startedAt, finishedAt: null, status: "running" };
+  log.push(record);
+  await writeLog(log);
+
+  try {
+    await task();
+    record = { ...record, status: "success" };
+  } catch (error) {
+    record = {
+      ...record,
+      status: "failed",
+      error: error instanceof Error ? error.stack ?? error.message : String(error),
+    };
+    console.error(`[runLog] ${jobName} 실패:`, error);
+  }
+  record.finishedAt = new Date().toISOString();
+
+  log = await readLog();
+  const index = log.findIndex((entry) => entry.id === id);
+  if (index >= 0) log[index] = record;
+  else log.push(record);
+  await writeLog(log);
+
+  console.log(`[runLog] ${jobName} 처리 종료: ${record.finishedAt} (${record.status})`);
+  return record;
+}
+
+// 스케줄러(cron)가 트리거한 실행. 캐치업 로직과 짝을 이룬다.
+export function runScheduledJob(jobName: string, task: () => Promise<void>): Promise<RunRecord> {
+  return recordRun(jobName, "scheduled", task);
+}
+
+// 관리자 페이지에서 사용자가 즉시 실행 버튼을 눌러 트리거한 실행.
+export function runManualJob(jobName: string, task: () => Promise<void>): Promise<RunRecord> {
+  return recordRun(jobName, "manual", task);
 }
 
 export async function updateProgress(jobName: string, progress: RunProgress): Promise<void> {
   const log = await readLog();
-  if (!log[jobName]) return;
-  log[jobName] = { ...log[jobName], progress };
+  const runningEntries = log.filter((record) => record.jobName === jobName && record.status === "running");
+  const latest = runningEntries[runningEntries.length - 1];
+  if (!latest) return;
+  latest.progress = progress;
   await writeLog(log);
 }
 
-export async function runDailyJob(jobName: string, task: () => Promise<void>): Promise<void> {
-  const startedAt = new Date().toISOString();
-  console.log(`[runLog] ${jobName} 처리 시작: ${startedAt}`);
-
+export async function getRunHistory(page: number, pageSize = 20): Promise<RunHistoryPage> {
   const log = await readLog();
-  log[jobName] = { date: todayKey(), startedAt, finishedAt: null, status: "running" };
-  await writeLog(log);
-
-  let status: RunStatus = "success";
-  try {
-    await task();
-  } catch (error) {
-    status = "failed";
-    console.error(`[runLog] ${jobName} 실패:`, error);
-  }
-
-  const finishedAt = new Date().toISOString();
-  const finalLog = await readLog();
-  finalLog[jobName] = { date: todayKey(), startedAt, finishedAt, status };
-  await writeLog(finalLog);
-  console.log(`[runLog] ${jobName} 처리 종료: ${finishedAt} (${status})`);
+  const sorted = [...log].sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+  const start = (page - 1) * pageSize;
+  return {
+    items: sorted.slice(start, start + pageSize),
+    page,
+    totalPages: Math.max(1, Math.ceil(sorted.length / pageSize)),
+    totalItems: sorted.length,
+  };
 }
 
 export async function catchUpIfMissed(
@@ -99,5 +165,5 @@ export async function catchUpIfMissed(
   if (await hasRunToday(jobName)) return;
 
   console.log(`[runLog] ${jobName} 당일 미실행 감지 — 기동 시점에 즉시 실행`);
-  await runDailyJob(jobName, task);
+  await runScheduledJob(jobName, task);
 }

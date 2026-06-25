@@ -7,6 +7,9 @@ export interface UserProfile {
   desiredRoleCategories: string[];
   roleAnswers: Record<string, string>;
   lastProfileUpdate: string | null;
+  sideProjects?: string;             // ← 추가 권장
+  learningStack?: string;            // ← 추가 권장 (현재 학습 중인 기술)
+  aiToolUsage?: string;              // ← 추가 권장 (AI 도구 활용 경험)
 }
 
 export interface JobPosting {
@@ -17,11 +20,15 @@ export interface JobPosting {
   location: string;
   deadline: string | null;
   requiredYears: { min: number; max: number } | null;
+  preferredSkills?: string[];        // ← 추가 권장 (우대사항)
   skills: string[];
   roleCategory: string | null;
   description: string;
   collectedAt: string;
   documents: GeneratedDocuments | null;
+  responsibilities?: string;         // ← 추가 권장 (담당업무 원문)
+  essayQuestions?: string[];         // ← 추가 권장 (자소서 문항)
+  charLimit?: string;                // ← 추가 권장 (글자수 제한)
 }
 
 export interface GeneratedDocuments {
@@ -29,6 +36,31 @@ export interface GeneratedDocuments {
   intro: string;
   workExperience: string;
   generatedAt: string;
+}
+
+export interface RunProgress {
+  total: number;
+  completed: number;
+  currentTitle: string | null;
+}
+
+export interface RunRecord {
+  id: string;
+  jobName: string;
+  trigger: "scheduled" | "manual";
+  date: string;
+  startedAt: string;
+  finishedAt: string | null;
+  status: "running" | "success" | "failed";
+  error?: string;
+  progress?: RunProgress;
+}
+
+export interface RunsPage {
+  items: RunRecord[];
+  page: number;
+  totalPages: number;
+  totalItems: number;
 }
 
 export const ROLE_CATEGORIES = [

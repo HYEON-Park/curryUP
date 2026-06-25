@@ -16,6 +16,9 @@ const EMPTY_PROFILE: UserProfile = {
   desiredRoleCategories: [],
   roleAnswers: {},
   lastProfileUpdate: null,
+  sideProjects: "",
+  learningStack: "",
+  aiToolUsage: "",
 };
 
 const UNSAVED_CHANGES_MESSAGE = "변경 사항이 저장되지 않을 수 있습니다. 나가시겠습니까?";
@@ -152,6 +155,34 @@ export function ProfileEditPage() {
           onChange={(locations) => setProfile({ ...profile, locations })}
         />
       </label>
+
+      <fieldset>
+        <legend>추가 정보 (선택)</legend>
+        <label>
+          진행 중인 개인 프로젝트
+          <AutoResizeTextarea
+            value={profile.sideProjects ?? ""}
+            onChange={(sideProjects) => setProfile({ ...profile, sideProjects })}
+            placeholder="사이드 프로젝트, 오픈소스 기여 등"
+          />
+        </label>
+        <label>
+          학습 중인 기술
+          <AutoResizeTextarea
+            value={profile.learningStack ?? ""}
+            onChange={(learningStack) => setProfile({ ...profile, learningStack })}
+            placeholder="현재 공부하고 있는 기술/툴"
+          />
+        </label>
+        <label>
+          AI 도구 활용 경험
+          <AutoResizeTextarea
+            value={profile.aiToolUsage ?? ""}
+            onChange={(aiToolUsage) => setProfile({ ...profile, aiToolUsage })}
+            placeholder="업무나 학습에 활용한 AI 도구 경험"
+          />
+        </label>
+      </fieldset>
 
       <fieldset>
         <legend>희망 직무 카테고리</legend>

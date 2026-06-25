@@ -4,11 +4,13 @@ import http from "node:http";
 import express from "express";
 import { getProfile } from "./data/store.js";
 import { notifyWithLink } from "./notify/osNotifier.js";
+import { adminRouter } from "./routes/admin.js";
 import { collectRouter } from "./routes/collect.js";
 import { profileRouter } from "./routes/profile.js";
 import { jobsRouter } from "./routes/jobs.js";
 import { catchUpAiBatchJob, startAiBatchJob } from "./scheduler/aiBatchJob.js";
 import { catchUpNotifyJob, startNotifyJob } from "./scheduler/notifyJob.js";
+import { reconcileInterruptedRuns } from "./scheduler/runLog.js";
 import { startScrapeJob } from "./scheduler/scrapeJob.js";
 
 try {
@@ -29,6 +31,7 @@ app.use(express.json());
 app.use("/api/profile", profileRouter);
 app.use("/api/jobs", jobsRouter);
 app.use("/api/collect", collectRouter);
+app.use("/api/admin", adminRouter);
 
 startScrapeJob();
 startNotifyJob();
@@ -52,6 +55,9 @@ if (isProd) {
 
 server.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
+
+  // 직전 종료가 비정상적이었다면 "running"으로 멈춰있는 이력을 failed로 정리한다.
+  reconcileInterruptedRuns().catch((error) => console.error("[reconcileInterruptedRuns] failed:", error));
 
   // AI 배치 catch-up은 건당 4~5분이 걸릴 수 있으므로 서버 기동(listen)을 막지 않고 백그라운드로 실행한다.
   catchUpNotifyJob().catch((error) => console.error("[catchUpNotifyJob] failed:", error));

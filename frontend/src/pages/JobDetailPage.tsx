@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { fetchJobDetail } from "../api/client";
 import type { JobPosting } from "../types";
 
@@ -14,6 +14,7 @@ const TAB_LABELS: Record<Tab, string> = {
 
 export function JobDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [job, setJob] = useState<JobPosting | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("coverLetter");
 
@@ -25,6 +26,9 @@ export function JobDetailPage() {
 
   return (
     <div className="job-detail">
+      <button className="back-to-list" onClick={() => navigate("/")}>
+        목록으로
+      </button>
       <h2>
         {job.company} — {job.title}
       </h2>

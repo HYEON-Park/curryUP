@@ -1,7 +1,7 @@
 import cron from "node-cron";
 import { notifyWithLink } from "../notify/osNotifier.js";
 import { generateMissingDocuments } from "../pipeline/generateMissingDocuments.js";
-import { catchUpIfMissed, runDailyJob, updateProgress } from "./runLog.js";
+import { catchUpIfMissed, runManualJob, runScheduledJob, updateProgress, type RunRecord } from "./runLog.js";
 
 const SCHEDULED_HOUR = 23;
 const SCHEDULED_MINUTE = 0;
@@ -27,7 +27,7 @@ async function aiBatchTask(): Promise<void> {
 
 // 매일 23:00, 그날 수집되어 documents가 null인 채로 쌓인 공고를 일괄 생성한다.
 export function startAiBatchJob(): void {
-  cron.schedule(`${SCHEDULED_MINUTE} ${SCHEDULED_HOUR} * * *`, () => runDailyJob(JOB_NAME, aiBatchTask));
+  cron.schedule(`${SCHEDULED_MINUTE} ${SCHEDULED_HOUR} * * *`, () => runScheduledJob(JOB_NAME, aiBatchTask));
 }
 
 // 백엔드가 23:00 이후에 켜졌고 당일 배치 처리 기록이 없다면 즉시 따라잡는다.
@@ -35,7 +35,7 @@ export function catchUpAiBatchJob(): Promise<void> {
   return catchUpIfMissed(JOB_NAME, SCHEDULED_HOUR, SCHEDULED_MINUTE, aiBatchTask);
 }
 
-// 스케줄과 무관하게 지금 바로 실행한다 (오늘자 실행 기록도 함께 남겨 23:00 중복 실행을 막는다).
-export function runAiBatchNow(): Promise<void> {
-  return runDailyJob(JOB_NAME, aiBatchTask);
+// 관리자 페이지: 스케줄과 무관하게 지금 바로 PENDING 공고를 추론한다.
+export function runAiBatchNow(): Promise<RunRecord> {
+  return runManualJob(JOB_NAME, aiBatchTask);
 }
