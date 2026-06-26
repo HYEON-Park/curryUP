@@ -28,3 +28,14 @@ cd C:\R\backend; npx tsx src/server.ts
 - `commit` 요청 → commit만
 - `push` 요청 → push만
 - 그 외 모든 작업도 동일: 요청 범위를 벗어나지 않는다.
+
+## 개인정보 보호
+
+아래 파일은 경력·이력 등 개인 데이터를 포함하므로 절대 commit·push하지 않는다.
+
+- `backend/src/data/userProfile.json`
+- `backend/src/data/jobPostings.json`
+- `backend/src/data/hiddenJobPostings.json`
+- `backend/src/data/runLog.json`
+
+git add 전 항상 staging 대상을 확인하고, 위 파일이 포함되어 있으면 제외한다.
