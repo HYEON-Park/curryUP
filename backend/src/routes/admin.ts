@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getHiddenJobs, restoreJob } from "../data/store.js";
+import { getHiddenJobs, permanentDeleteAllHiddenJobs, permanentDeleteHiddenJobs, restoreJob } from "../data/store.js";
 import { runAiBatchNow } from "../scheduler/aiBatchJob.js";
 import { runNotifyNow } from "../scheduler/notifyJob.js";
 import { getRunHistory } from "../scheduler/runLog.js";
@@ -40,6 +40,21 @@ adminRouter.get("/hidden-jobs", async (req, res) => {
     totalPages: Math.max(1, Math.ceil(all.length / HIDDEN_PAGE_SIZE)),
     totalItems: all.length,
   });
+});
+
+adminRouter.post("/hidden-jobs/purge-selected", async (req, res) => {
+  const { ids } = req.body as { ids: string[] };
+  if (!Array.isArray(ids) || ids.length === 0) {
+    res.status(400).json({ error: "ids array required" });
+    return;
+  }
+  await permanentDeleteHiddenJobs(ids);
+  res.json({ success: true });
+});
+
+adminRouter.post("/hidden-jobs/purge-all", async (_req, res) => {
+  await permanentDeleteAllHiddenJobs();
+  res.json({ success: true });
 });
 
 adminRouter.post("/hidden-jobs/:id/restore", async (req, res) => {

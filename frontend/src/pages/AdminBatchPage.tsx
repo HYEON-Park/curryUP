@@ -2,6 +2,8 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import {
   fetchHiddenJobs,
   fetchRuns,
+  purgeAllHiddenJobs,
+  purgeSelectedHiddenJobs,
   restoreHiddenJob,
   runAiBatch,
   runNotifyBatch,
@@ -38,17 +40,46 @@ function DashboardManagementTab() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
+  const checkAllRef = useRef<HTMLInputElement>(null);
 
   async function load(p: number) {
     const data = await fetchHiddenJobs(p);
     setItems(data.items);
     setTotalPages(data.totalPages);
     setTotalItems(data.totalItems);
+    setSelected(new Set());
   }
 
   useEffect(() => {
     load(page);
   }, [page]);
+
+  // 전체 선택 체크박스 indeterminate 상태 동기화
+  useEffect(() => {
+    if (!checkAllRef.current) return;
+    const pageIds = items.map((j) => j.id);
+    const selectedOnPage = pageIds.filter((id) => selected.has(id));
+    checkAllRef.current.indeterminate =
+      selectedOnPage.length > 0 && selectedOnPage.length < pageIds.length;
+  }, [selected, items]);
+
+  function toggleAll(checked: boolean) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      items.forEach((j) => (checked ? next.add(j.id) : next.delete(j.id)));
+      return next;
+    });
+  }
+
+  function toggleOne(id: string, checked: boolean) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      checked ? next.add(id) : next.delete(id);
+      return next;
+    });
+  }
 
   async function handleRestore(id: string) {
     setRestoringId(id);
@@ -60,15 +91,70 @@ function DashboardManagementTab() {
     }
   }
 
+  async function handlePurgeSelected() {
+    const ids = [...selected];
+    if (ids.length === 0) return;
+    if (!window.confirm(`주의: 영구 삭제된 공고 데이터는 절대 복구할 수 없습니다.\n정말로 ${ids.length}개의 공고를 영구 삭제하시겠습니까?`))
+      return;
+    setBusy(true);
+    try {
+      await purgeSelectedHiddenJobs(ids);
+      await load(page);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handlePurgeAll() {
+    if (!window.confirm(`주의: 영구 삭제된 공고 데이터는 절대 복구할 수 없습니다.\n정말로 ${totalItems}개의 공고를 영구 삭제하시겠습니까?`))
+      return;
+    setBusy(true);
+    try {
+      await purgeAllHiddenJobs();
+      await load(1);
+      setPage(1);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const allOnPageSelected =
+    items.length > 0 && items.every((j) => selected.has(j.id));
+
   if (totalItems === 0 && items.length === 0) {
     return <p className="admin-status">삭제된 공고가 없습니다.</p>;
   }
 
   return (
     <div>
+      <div className="deleted-jobs-actions">
+        <button
+          className="purge-selected-btn"
+          disabled={selected.size === 0 || busy || restoringId !== null}
+          onClick={handlePurgeSelected}
+        >
+          선택 삭제 ({selected.size})
+        </button>
+        <button
+          className="purge-all-btn"
+          disabled={busy || restoringId !== null}
+          onClick={handlePurgeAll}
+        >
+          일괄 영구 삭제
+        </button>
+      </div>
+
       <table className="run-table deleted-jobs-table">
         <thead>
           <tr>
+            <th>
+              <input
+                type="checkbox"
+                ref={checkAllRef}
+                checked={allOnPageSelected}
+                onChange={(e) => toggleAll(e.target.checked)}
+              />
+            </th>
             <th>회사</th>
             <th>공고 제목</th>
             <th>지역</th>
@@ -79,6 +165,13 @@ function DashboardManagementTab() {
         <tbody>
           {items.map((job) => (
             <tr key={job.id}>
+              <td>
+                <input
+                  type="checkbox"
+                  checked={selected.has(job.id)}
+                  onChange={(e) => toggleOne(job.id, e.target.checked)}
+                />
+              </td>
               <td>{job.company}</td>
               <td>{job.title}</td>
               <td>{job.location}</td>
@@ -86,7 +179,7 @@ function DashboardManagementTab() {
               <td>
                 <button
                   className="restore-btn"
-                  disabled={restoringId !== null}
+                  disabled={restoringId !== null || busy}
                   onClick={() => handleRestore(job.id)}
                 >
                   복구
@@ -100,13 +193,13 @@ function DashboardManagementTab() {
       {totalPages > 1 && (
         <div className="pagination">
           <div className="pagination-nav">
-            <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+            <button disabled={page <= 1} onClick={() => setPage(page - 1)}>
               이전
             </button>
             <span>
               {page} / {totalPages}
             </span>
-            <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+            <button disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
               다음
             </button>
           </div>

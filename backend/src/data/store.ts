@@ -50,6 +50,15 @@ export async function saveJobPostings(jobs: JobPosting[]): Promise<void> {
   await writeJson(JOBS_PATH, jobs);
 }
 
+export async function permanentDeleteHiddenJobs(ids: string[]): Promise<void> {
+  const hidden = await getHiddenJobs();
+  await writeJson(HIDDEN_JOBS_PATH, hidden.filter((j) => !ids.includes(j.id)));
+}
+
+export async function permanentDeleteAllHiddenJobs(): Promise<void> {
+  await writeJson(HIDDEN_JOBS_PATH, []);
+}
+
 export async function getHiddenJobs(): Promise<HiddenJobPosting[]> {
   return readJson(HIDDEN_JOBS_PATH, []);
 }

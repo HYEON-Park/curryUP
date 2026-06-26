@@ -69,3 +69,17 @@ export async function restoreHiddenJob(id: string): Promise<void> {
   const res = await fetch(`${BASE_URL}/admin/hidden-jobs/${id}/restore`, { method: "POST" });
   if (!res.ok) throw new Error("복구 요청이 실패했습니다.");
 }
+
+export async function purgeSelectedHiddenJobs(ids: string[]): Promise<void> {
+  const res = await fetch(`${BASE_URL}/admin/hidden-jobs/purge-selected`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids }),
+  });
+  if (!res.ok) throw new Error("선택 삭제 실패");
+}
+
+export async function purgeAllHiddenJobs(): Promise<void> {
+  const res = await fetch(`${BASE_URL}/admin/hidden-jobs/purge-all`, { method: "POST" });
+  if (!res.ok) throw new Error("전체 삭제 실패");
+}
