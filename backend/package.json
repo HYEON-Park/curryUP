@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "cross-env NODE_ENV=development tsx watch --exclude \"../frontend/**\" --exclude \"src/data/**\" src/server.ts",
+    "dev": "cross-env NODE_ENV=development tsx watch --exclude \"../frontend/**\" --exclude \"src/data/*.json\" src/server.ts",
     "build": "tsc && npm --prefix ../frontend run build",
     "start": "cross-env NODE_ENV=production node dist/server.js"
   },
