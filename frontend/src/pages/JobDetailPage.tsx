@@ -26,7 +26,7 @@ export function JobDetailPage() {
 
   return (
     <div className="job-detail">
-      <button className="back-to-list" onClick={() => navigate("/")}>
+      <button className="back-to-list" onClick={() => navigate(-1)}>
         목록으로
       </button>
       <h2>

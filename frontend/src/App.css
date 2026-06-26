@@ -193,6 +193,37 @@ button[type="submit"] {
   color: var(--accent);
 }
 
+.job-card-delete {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.job-card:hover .job-card-delete {
+  opacity: 1;
+}
+
+.job-card-delete:hover {
+  border-color: #d33;
+  color: #d33;
+  background: rgba(221, 51, 51, 0.08);
+}
+
 .job-card .job-source {
   position: absolute;
   top: 16px;
@@ -212,9 +243,16 @@ button[type="submit"] {
 .pagination {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 12px;
+  position: relative;
   margin-top: 24px;
+  padding: 0 16px;
+}
+
+.pagination-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 auto;
 }
 
 .pagination button {
@@ -233,8 +271,10 @@ button[type="submit"] {
 }
 
 .pagination-total {
-  margin-left: auto;
+  position: absolute;
+  right: 16px;
   color: var(--text);
+  font-size: 14px;
 }
 
 .job-detail {
@@ -487,6 +527,46 @@ button[type="submit"] {
   margin: 0 auto;
   text-align: left;
   padding: 0 16px;
+}
+
+.admin-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-tabs button {
+  font: inherit;
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.admin-tabs button.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.restore-btn {
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  background: var(--accent-bg);
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.restore-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .admin-controls {

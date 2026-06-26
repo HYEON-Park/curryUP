@@ -12,7 +12,7 @@ function App() {
       <nav style={{ display: "flex", gap: 16, padding: 16, alignItems: "center" }}>
         <Link to="/">대시보드</Link>
         <Link to="/profile">프로필</Link>
-        <Link to="/admin">배치 관리자</Link>
+        <Link to="/admin">관리자</Link>
       </nav>
       <Routes>
         <Route path="/" element={<DashboardPage />} />

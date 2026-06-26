@@ -34,6 +34,17 @@ export interface JobPosting {
   documents: GeneratedDocuments | null;
 }
 
+export interface HiddenJobPosting extends JobPosting {
+  hiddenAt: string;
+}
+
+export interface HiddenJobsPage {
+  items: HiddenJobPosting[];
+  page: number;
+  totalPages: number;
+  totalItems: number;
+}
+
 export interface JobsPage {
   items: JobPosting[];
   page: number;

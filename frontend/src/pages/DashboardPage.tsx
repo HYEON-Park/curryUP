@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { fetchJobs, triggerCollect } from "../api/client";
+import { Link, useSearchParams } from "react-router-dom";
+import { deleteJob, fetchJobs, triggerCollect } from "../api/client";
 import type { JobPosting } from "../types";
 import { formatDday } from "../utils/dday";
 
@@ -11,12 +11,17 @@ function sourceLabel(sourceUrl: string): string {
 }
 
 export function DashboardPage() {
-  const [page, setPage] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const page = Math.max(1, Number(searchParams.get("page") || "1"));
   const [items, setItems] = useState<JobPosting[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [collecting, setCollecting] = useState(false);
   const [collectStatus, setCollectStatus] = useState<string | null>(null);
+
+  function setPage(n: number) {
+    setSearchParams({ page: String(n) }, { replace: true });
+  }
 
   useEffect(() => {
     fetchJobs(page).then((data) => {
@@ -46,6 +51,14 @@ export function DashboardPage() {
     }
   }
 
+  async function handleDelete(id: string) {
+    await deleteJob(id);
+    const data = await fetchJobs(page);
+    setItems(data.items);
+    setTotalPages(data.totalPages);
+    setTotalItems(data.totalItems);
+  }
+
   return (
     <div>
       <div className="dashboard-toolbar">
@@ -70,22 +83,35 @@ export function DashboardPage() {
                   {job.title}
                 </p>
                 <span className="dday">{formatDday(job.deadline)}</span>
+                <button
+                  className="job-card-delete"
+                  title="삭제"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleDelete(job.id);
+                  }}
+                >
+                  ×
+                </button>
               </Link>
             ))}
           </div>
 
           {totalPages > 1 && (
             <div className="pagination">
-              <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                이전
-              </button>
-              <span>
-                {page} / {totalPages}
-              </span>
-              <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
-                다음
-              </button>
-              <span className="pagination-total">(총 {totalItems}개)</span>
+              <div className="pagination-nav">
+                <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                  이전
+                </button>
+                <span>
+                  {page} / {totalPages}
+                </span>
+                <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+                  다음
+                </button>
+              </div>
+              <span className="pagination-total">총 {totalItems}개</span>
             </div>
           )}
         </>

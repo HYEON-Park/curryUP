@@ -1,4 +1,4 @@
-import type { JobPosting, JobsPage, RunRecord, RunsPage, UserProfile } from "../types";
+import type { HiddenJobsPage, JobPosting, JobsPage, RunRecord, RunsPage, UserProfile } from "../types";
 
 const BASE_URL = "/api";
 
@@ -53,4 +53,19 @@ export async function runAiBatch(): Promise<{ started: boolean }> {
   const res = await fetch(`${BASE_URL}/admin/ai/run`, { method: "POST" });
   if (!res.ok) throw new Error("AI 배치 실행에 실패했습니다.");
   return res.json();
+}
+
+export async function deleteJob(id: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/jobs/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("삭제 요청이 실패했습니다.");
+}
+
+export async function fetchHiddenJobs(page: number): Promise<HiddenJobsPage> {
+  const res = await fetch(`${BASE_URL}/admin/hidden-jobs?page=${page}`);
+  return res.json();
+}
+
+export async function restoreHiddenJob(id: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/admin/hidden-jobs/${id}/restore`, { method: "POST" });
+  if (!res.ok) throw new Error("복구 요청이 실패했습니다.");
 }

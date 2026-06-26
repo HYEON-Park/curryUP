@@ -1,6 +1,13 @@
 import { Fragment, useEffect, useRef, useState } from "react";
-import { fetchRuns, runAiBatch, runNotifyBatch, runScrapeBatch } from "../api/client";
-import type { RunRecord } from "../types";
+import {
+  fetchHiddenJobs,
+  fetchRuns,
+  restoreHiddenJob,
+  runAiBatch,
+  runNotifyBatch,
+  runScrapeBatch,
+} from "../api/client";
+import type { HiddenJobPosting, RunRecord } from "../types";
 
 const JOB_LABELS: Record<string, string> = {
   scrape: "공고 스크래핑 배치",
@@ -23,7 +30,96 @@ function formatTime(iso: string | null): string {
   return new Date(iso).toTimeString().slice(0, 8);
 }
 
-export function AdminBatchPage() {
+// ─── 대쉬보드 관리 탭 ───────────────────────────────────────────────────────
+
+function DashboardManagementTab() {
+  const [page, setPage] = useState(1);
+  const [items, setItems] = useState<HiddenJobPosting[]>([]);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+
+  async function load(p: number) {
+    const data = await fetchHiddenJobs(p);
+    setItems(data.items);
+    setTotalPages(data.totalPages);
+    setTotalItems(data.totalItems);
+  }
+
+  useEffect(() => {
+    load(page);
+  }, [page]);
+
+  async function handleRestore(id: string) {
+    setRestoringId(id);
+    try {
+      await restoreHiddenJob(id);
+      await load(page);
+    } finally {
+      setRestoringId(null);
+    }
+  }
+
+  if (totalItems === 0 && items.length === 0) {
+    return <p className="admin-status">삭제된 공고가 없습니다.</p>;
+  }
+
+  return (
+    <div>
+      <table className="run-table deleted-jobs-table">
+        <thead>
+          <tr>
+            <th>회사</th>
+            <th>공고 제목</th>
+            <th>지역</th>
+            <th>삭제일</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((job) => (
+            <tr key={job.id}>
+              <td>{job.company}</td>
+              <td>{job.title}</td>
+              <td>{job.location}</td>
+              <td>{formatDate(job.hiddenAt)}</td>
+              <td>
+                <button
+                  className="restore-btn"
+                  disabled={restoringId !== null}
+                  onClick={() => handleRestore(job.id)}
+                >
+                  복구
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {totalPages > 1 && (
+        <div className="pagination">
+          <div className="pagination-nav">
+            <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+              이전
+            </button>
+            <span>
+              {page} / {totalPages}
+            </span>
+            <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+              다음
+            </button>
+          </div>
+          <span className="pagination-total">총 {totalItems}개</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── 배치 모니터링 및 제어 탭 ────────────────────────────────────────────────
+
+function BatchMonitoringTab() {
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<RunRecord[]>([]);
   const [totalPages, setTotalPages] = useState(1);
@@ -70,7 +166,12 @@ export function AdminBatchPage() {
     });
   }
 
-  async function handleAction(key: string, label: string, action: () => Promise<unknown>, doneMessage = `${label} 완료`) {
+  async function handleAction(
+    key: string,
+    label: string,
+    action: () => Promise<unknown>,
+    doneMessage = `${label} 완료`
+  ) {
     setPending(key);
     setActionStatus(`${label} 실행 중...`);
     try {
@@ -86,22 +187,26 @@ export function AdminBatchPage() {
   }
 
   return (
-    <div className="admin-batch">
-      <h2>배치 관리자</h2>
-
+    <div>
       <div className="admin-controls">
         <div className="admin-control-row">
           <span>{JOB_LABELS.scrape}</span>
           <div className="admin-control-actions">
             <button
               disabled={pending !== null}
-              onClick={() => handleAction("scrape-today", "오늘 수집 초기화 후 재수집", () => runScrapeBatch("today"))}
+              onClick={() =>
+                handleAction("scrape-today", "오늘 수집 초기화 후 재수집", () =>
+                  runScrapeBatch("today")
+                )
+              }
             >
               오늘 수집 초기화 후 재수집
             </button>
             <button
               disabled={pending !== null}
-              onClick={() => handleAction("scrape-all", "전체 초기화 후 재수집", () => runScrapeBatch("all"))}
+              onClick={() =>
+                handleAction("scrape-all", "전체 초기화 후 재수집", () => runScrapeBatch("all"))
+              }
             >
               전체 초기화 후 재수집
             </button>
@@ -111,7 +216,10 @@ export function AdminBatchPage() {
         <div className="admin-control-row">
           <span>{JOB_LABELS.notify}</span>
           <div className="admin-control-actions">
-            <button disabled={pending !== null} onClick={() => handleAction("notify", "즉시 발송하기", runNotifyBatch)}>
+            <button
+              disabled={pending !== null}
+              onClick={() => handleAction("notify", "즉시 발송하기", runNotifyBatch)}
+            >
               즉시 발송하기
             </button>
           </div>
@@ -123,7 +231,12 @@ export function AdminBatchPage() {
             <button
               disabled={pending !== null}
               onClick={() =>
-                handleAction("aiBatch", "PENDING 초기화 후 즉시 추론", runAiBatch, "추론 시작됨 (아래 표에서 진행 상황 확인)")
+                handleAction(
+                  "aiBatch",
+                  "PENDING 초기화 후 즉시 추론",
+                  runAiBatch,
+                  "추론 시작됨 (아래 표에서 진행 상황 확인)"
+                )
               }
             >
               PENDING 초기화 후 즉시 추론
@@ -175,17 +288,42 @@ export function AdminBatchPage() {
 
       {totalPages > 1 && (
         <div className="pagination">
-          <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-            이전
-          </button>
-          <span>
-            {page} / {totalPages}
-          </span>
-          <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
-            다음
-          </button>
+          <div className="pagination-nav">
+            <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+              이전
+            </button>
+            <span>
+              {page} / {totalPages}
+            </span>
+            <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+              다음
+            </button>
+          </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── 관리자 페이지 (탭 컨테이너) ─────────────────────────────────────────────
+
+type AdminTab = "dashboard" | "batch";
+
+export function AdminBatchPage() {
+  const [tab, setTab] = useState<AdminTab>("batch");
+
+  return (
+    <div className="admin-batch">
+      <h2>관리자</h2>
+      <div className="admin-tabs">
+        <button className={tab === "dashboard" ? "active" : ""} onClick={() => setTab("dashboard")}>
+          대쉬보드 관리
+        </button>
+        <button className={tab === "batch" ? "active" : ""} onClick={() => setTab("batch")}>
+          배치 모니터링 및 제어
+        </button>
+      </div>
+      {tab === "dashboard" ? <DashboardManagementTab /> : <BatchMonitoringTab />}
     </div>
   );
 }

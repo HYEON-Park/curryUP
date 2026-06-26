@@ -38,6 +38,10 @@ export interface GeneratedDocuments {
   generatedAt: string;
 }
 
+export interface HiddenJobPosting extends JobPosting {
+  hiddenAt: string;
+}
+
 export interface RunProgress {
   total: number;
   completed: number;

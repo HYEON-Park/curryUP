@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getJobPostings } from "../data/store.js";
+import { getJobPostings, hideJob } from "../data/store.js";
 import type { JobPosting } from "../types.js";
 
 export const jobsRouter = Router();
@@ -57,4 +57,13 @@ jobsRouter.get("/:id", async (req, res) => {
     return;
   }
   res.json(job);
+});
+
+jobsRouter.delete("/:id", async (req, res) => {
+  const success = await hideJob(req.params.id);
+  if (!success) {
+    res.status(404).json({ error: "Job not found" });
+    return;
+  }
+  res.json({ success: true });
 });

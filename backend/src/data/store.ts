@@ -1,11 +1,12 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { JobPosting, UserProfile } from "../types.js";
+import type { HiddenJobPosting, JobPosting, UserProfile } from "../types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROFILE_PATH = path.join(__dirname, "userProfile.json");
 const JOBS_PATH = path.join(__dirname, "jobPostings.json");
+const HIDDEN_JOBS_PATH = path.join(__dirname, "hiddenJobPostings.json");
 
 const DEFAULT_PROFILE: UserProfile = {
   yearsOfExperience: null,
@@ -47,6 +48,36 @@ export async function getJobPostings(): Promise<JobPosting[]> {
 
 export async function saveJobPostings(jobs: JobPosting[]): Promise<void> {
   await writeJson(JOBS_PATH, jobs);
+}
+
+export async function getHiddenJobs(): Promise<HiddenJobPosting[]> {
+  return readJson(HIDDEN_JOBS_PATH, []);
+}
+
+export async function hideJob(id: string): Promise<boolean> {
+  const jobs = await getJobPostings();
+  const idx = jobs.findIndex((j) => j.id === id);
+  if (idx === -1) return false;
+  const [job] = jobs.splice(idx, 1);
+  await saveJobPostings(jobs);
+  const hidden = await getHiddenJobs();
+  hidden.unshift({ ...job, hiddenAt: new Date().toISOString() });
+  await writeJson(HIDDEN_JOBS_PATH, hidden);
+  return true;
+}
+
+export async function restoreJob(id: string): Promise<boolean> {
+  const hidden = await getHiddenJobs();
+  const idx = hidden.findIndex((j) => j.id === id);
+  if (idx === -1) return false;
+  const hiddenJob = hidden[idx];
+  hidden.splice(idx, 1);
+  await writeJson(HIDDEN_JOBS_PATH, hidden);
+  const { hiddenAt: _, ...job } = hiddenJob;
+  const jobs = await getJobPostings();
+  jobs.push(job);
+  await saveJobPostings(jobs);
+  return true;
 }
 
 // 관리자 페이지: 오늘 수집된 공고만 지워서 재수집 시 깨끗하게 다시 쌓이게 한다.
