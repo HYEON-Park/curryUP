@@ -12,7 +12,7 @@ function sourceLabel(sourceUrl: string): string {
 
 export function DashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const page = Math.max(1, Number(searchParams.get("page") || "1"));
+  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10) || 1);
   const [items, setItems] = useState<JobPosting[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
@@ -101,13 +101,13 @@ export function DashboardPage() {
           {totalPages > 1 && (
             <div className="pagination">
               <div className="pagination-nav">
-                <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                <button disabled={page <= 1} onClick={() => setPage(page - 1)}>
                   이전
                 </button>
                 <span>
                   {page} / {totalPages}
                 </span>
-                <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+                <button disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
                   다음
                 </button>
               </div>
