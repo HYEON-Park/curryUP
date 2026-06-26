@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getJobPostings, hideJob } from "../data/store.js";
+import { getJobPostings, hideJob, saveJobPostings } from "../data/store.js";
 import type { JobPosting } from "../types.js";
 
 export const jobsRouter = Router();
@@ -23,6 +23,12 @@ function daysUntilDeadline(deadline: string | null): number | null {
   return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+// 오늘(D-0) 또는 내일(D-1) 마감인 공고는 지원 시간이 부족하므로 대시보드에서 제외한다.
+function isImminentDeadline(deadline: string | null): boolean {
+  const days = daysUntilDeadline(deadline);
+  return days !== null && days <= 1;
+}
+
 // D-day가 긴(남은 일수가 많은) 순서로 정렬하고, 같으면 기업명 가나다순으로 정렬한다.
 // 마감일이 없는 공고는 맨 뒤로 보내고 그 안에서는 기업명 가나다순으로 정렬한다.
 function compareJobs(a: JobPosting, b: JobPosting): number {
@@ -38,8 +44,18 @@ function compareJobs(a: JobPosting, b: JobPosting): number {
 
 jobsRouter.get("/", async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
-  const jobs = await getJobPostings();
-  const sorted = [...jobs].sort(compareJobs);
+  const allJobs = await getJobPostings();
+
+  const imminent = allJobs.filter((j) => isImminentDeadline(j.deadline));
+  const visible = imminent.length > 0
+    ? allJobs.filter((j) => !isImminentDeadline(j.deadline))
+    : allJobs;
+
+  if (imminent.length > 0) {
+    await saveJobPostings(visible);
+  }
+
+  const sorted = [...visible].sort(compareJobs);
   const start = (page - 1) * PAGE_SIZE;
   res.json({
     items: sorted.slice(start, start + PAGE_SIZE),

@@ -9,6 +9,19 @@ function idFor(sourceUrl: string): string {
   return createHash("sha1").update(sourceUrl).digest("hex").slice(0, 16);
 }
 
+function daysUntilDeadline(deadline: string | null): number | null {
+  if (!deadline) return null;
+  const match = deadline.match(/(\d{1,2})\/(\d{1,2})/);
+  if (!match) return null;
+  const month = Number(match[1]);
+  const day = Number(match[2]);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let target = new Date(today.getFullYear(), month - 1, day);
+  if (target < today) target = new Date(today.getFullYear() + 1, month - 1, day);
+  return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+}
+
 export async function runScrapeAndMatch(): Promise<{ collected: number; newlyMatched: number }> {
   const urls = await getCrawlTargetUrls();
   const profile = await getProfile();
@@ -33,6 +46,9 @@ export async function runScrapeAndMatch(): Promise<{ collected: number; newlyMat
       const id = idFor(posting.sourceUrl);
       if (existingById.has(id)) continue;
       if (!isMatch(profile, posting)) continue;
+
+      const days = daysUntilDeadline(posting.deadline);
+      if (days !== null && days <= 1) continue;
 
       const job: JobPosting = { ...posting, id, documents: null };
       existingById.set(id, job);
