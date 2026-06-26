@@ -20,3 +20,11 @@ Get-WmiObject Win32_Process | Where-Object {
 # 하나만 기동
 cd C:\R\backend; npx tsx src/server.ts
 ```
+
+## 작업 범위
+
+요청한 것만 정확히 실행한다. 임의로 추가 작업하지 않는다.
+
+- `commit` 요청 → commit만
+- `push` 요청 → push만
+- 그 외 모든 작업도 동일: 요청 범위를 벗어나지 않는다.
