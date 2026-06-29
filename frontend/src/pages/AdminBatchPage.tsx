@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import {
+  fetchFavoriteJobs,
   fetchHiddenJobs,
   fetchRuns,
   purgeAllHiddenJobs,
@@ -8,8 +9,9 @@ import {
   runAiBatch,
   runNotifyBatch,
   runScrapeBatch,
+  toggleFavorite,
 } from "../api/client";
-import type { HiddenJobPosting, RunRecord } from "../types";
+import type { HiddenJobPosting, JobPosting, RunRecord } from "../types";
 
 const JOB_LABELS: Record<string, string> = {
   scrape: "공고 스크래핑 배치",
@@ -56,7 +58,6 @@ function DashboardManagementTab() {
     load(page);
   }, [page]);
 
-  // 전체 선택 체크박스 indeterminate 상태 동기화
   useEffect(() => {
     if (!checkAllRef.current) return;
     const pageIds = items.map((j) => j.id);
@@ -207,6 +208,69 @@ function DashboardManagementTab() {
         </div>
       )}
     </div>
+  );
+}
+
+// ─── 즐겨찾기 관리 탭 ────────────────────────────────────────────────────────
+
+function FavoritesTab() {
+  const [items, setItems] = useState<JobPosting[]>([]);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  async function load() {
+    const data = await fetchFavoriteJobs();
+    setItems(data);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function handleUnfavorite(id: string) {
+    setBusyId(id);
+    try {
+      await toggleFavorite(id);
+      setItems((prev) => prev.filter((j) => j.id !== id));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  if (items.length === 0) {
+    return <p className="admin-status">즐겨찾기한 공고가 없습니다.</p>;
+  }
+
+  return (
+    <table className="run-table">
+      <thead>
+        <tr>
+          <th>회사</th>
+          <th>공고 제목</th>
+          <th>지역</th>
+          <th>마감일</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {items.map((job) => (
+          <tr key={job.id}>
+            <td>{job.company}</td>
+            <td>{job.title}</td>
+            <td>{job.location}</td>
+            <td>{job.deadline ?? "상시채용"}</td>
+            <td>
+              <button
+                className="unfavorite-btn"
+                disabled={busyId === job.id}
+                onClick={() => handleUnfavorite(job.id)}
+              >
+                ★ 해제
+              </button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
@@ -400,7 +464,7 @@ function BatchMonitoringTab() {
 
 // ─── 관리자 페이지 (탭 컨테이너) ─────────────────────────────────────────────
 
-type AdminTab = "dashboard" | "batch";
+type AdminTab = "dashboard" | "favorites" | "batch";
 
 export function AdminBatchPage() {
   const [tab, setTab] = useState<AdminTab>("batch");
@@ -412,11 +476,20 @@ export function AdminBatchPage() {
         <button className={tab === "dashboard" ? "active" : ""} onClick={() => setTab("dashboard")}>
           대쉬보드 관리
         </button>
+        <button className={tab === "favorites" ? "active" : ""} onClick={() => setTab("favorites")}>
+          즐겨찾기 관리
+        </button>
         <button className={tab === "batch" ? "active" : ""} onClick={() => setTab("batch")}>
           배치 모니터링 및 제어
         </button>
       </div>
-      {tab === "dashboard" ? <DashboardManagementTab /> : <BatchMonitoringTab />}
+      {tab === "dashboard" ? (
+        <DashboardManagementTab />
+      ) : tab === "favorites" ? (
+        <FavoritesTab />
+      ) : (
+        <BatchMonitoringTab />
+      )}
     </div>
   );
 }

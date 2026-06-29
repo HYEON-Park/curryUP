@@ -117,6 +117,15 @@ function isPastDeadline(job: JobPosting, now: Date): boolean {
 }
 
 // 데일리 배치: D-day(마감일)가 지난 공고는 더 이상 지원 대상이 아니므로 정리한다.
+export async function toggleFavorite(id: string): Promise<boolean | null> {
+  const jobs = await getJobPostings();
+  const job = jobs.find((j) => j.id === id);
+  if (!job) return null;
+  job.isFavorite = !job.isFavorite;
+  await saveJobPostings(jobs);
+  return !!job.isFavorite;
+}
+
 export async function deleteExpiredJobPostings(): Promise<void> {
   const jobs = await getJobPostings();
   const now = new Date();

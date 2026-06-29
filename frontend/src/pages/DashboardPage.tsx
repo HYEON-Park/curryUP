@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { deleteJob, fetchJobs, triggerCollect } from "../api/client";
+import { deleteJob, fetchJobs, toggleFavorite, triggerCollect } from "../api/client";
 import type { JobPosting } from "../types";
 import { formatDday } from "../utils/dday";
 
@@ -59,6 +59,13 @@ export function DashboardPage() {
     setTotalItems(data.totalItems);
   }
 
+  async function handleFavorite(id: string) {
+    const result = await toggleFavorite(id);
+    setItems((prev) =>
+      prev.map((j) => (j.id === id ? { ...j, isFavorite: result.isFavorite } : j))
+    );
+  }
+
   return (
     <div>
       <div className="dashboard-toolbar">
@@ -76,6 +83,17 @@ export function DashboardPage() {
             {items.map((job) => (
               <Link key={job.id} to={`/jobs/${job.id}`} className="job-card">
                 <span className="job-source">{sourceLabel(job.sourceUrl)}</span>
+                <button
+                  className={`job-card-favorite${job.isFavorite ? " favorited" : ""}`}
+                  title={job.isFavorite ? "즐겨찾기 해제" : "즐겨찾기"}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleFavorite(job.id);
+                  }}
+                >
+                  {job.isFavorite ? "★" : "☆"}
+                </button>
                 <h3>{job.company}</h3>
                 <p>
                   {job.location}

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getJobPostings, hideJob, saveJobPostings } from "../data/store.js";
+import { getJobPostings, hideJob, saveJobPostings, toggleFavorite } from "../data/store.js";
 import type { JobPosting } from "../types.js";
 
 export const jobsRouter = Router();
@@ -73,6 +73,15 @@ jobsRouter.get("/:id", async (req, res) => {
     return;
   }
   res.json(job);
+});
+
+jobsRouter.patch("/:id/favorite", async (req, res) => {
+  const result = await toggleFavorite(req.params.id);
+  if (result === null) {
+    res.status(404).json({ error: "Job not found" });
+    return;
+  }
+  res.json({ isFavorite: result });
 });
 
 jobsRouter.delete("/:id", async (req, res) => {

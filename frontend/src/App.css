@@ -240,6 +240,40 @@ button[type="submit"] {
   font-weight: 700;
 }
 
+.job-card-favorite {
+  position: absolute;
+  top: 12px;
+  right: 44px;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  padding: 0;
+  opacity: 0.2;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.job-card:hover .job-card-favorite {
+  opacity: 0.6;
+}
+
+.job-card-favorite.favorited {
+  color: #f5a623;
+  opacity: 1;
+}
+
+.job-card-favorite:hover {
+  opacity: 1 !important;
+}
+
 .pagination {
   display: flex;
   align-items: center;
@@ -565,6 +599,22 @@ button[type="submit"] {
 }
 
 .restore-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.unfavorite-btn {
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid #f5a623;
+  background: rgba(245, 166, 35, 0.08);
+  color: #c8870a;
+  cursor: pointer;
+}
+
+.unfavorite-btn:disabled {
   opacity: 0.5;
   cursor: default;
 }

@@ -38,4 +38,10 @@ cd C:\R\backend; npx tsx src/server.ts
 - `backend/src/data/hiddenJobPostings.json`
 - `backend/src/data/runLog.json`
 
-git add 전 항상 staging 대상을 확인하고, 위 파일이 포함되어 있으면 제외한다.
+아래 파일도 절대 commit·push하지 않는다.
+
+- `.idea/`
+- `backend/run_single_job.mts`
+- `backend/scripts/setup.zip`
+
+git add 전 항상 staging 대상을 확인하고, 위 파일들이 포함되어 있으면 제외한다.

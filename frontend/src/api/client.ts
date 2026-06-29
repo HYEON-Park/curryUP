@@ -83,3 +83,14 @@ export async function purgeAllHiddenJobs(): Promise<void> {
   const res = await fetch(`${BASE_URL}/admin/hidden-jobs/purge-all`, { method: "POST" });
   if (!res.ok) throw new Error("전체 삭제 실패");
 }
+
+export async function toggleFavorite(id: string): Promise<{ isFavorite: boolean }> {
+  const res = await fetch(`${BASE_URL}/jobs/${id}/favorite`, { method: "PATCH" });
+  if (!res.ok) throw new Error("즐겨찾기 변경 실패");
+  return res.json();
+}
+
+export async function fetchFavoriteJobs(): Promise<JobPosting[]> {
+  const res = await fetch(`${BASE_URL}/admin/favorites`);
+  return res.json();
+}

@@ -29,6 +29,7 @@ export interface JobPosting {
   responsibilities?: string;         // ← 추가 권장 (담당업무 원문)
   essayQuestions?: string[];         // ← 추가 권장 (자소서 문항)
   charLimit?: string;                // ← 추가 권장 (글자수 제한)
+  isFavorite?: boolean;
 }
 
 export interface GeneratedDocuments {

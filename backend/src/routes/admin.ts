@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getHiddenJobs, permanentDeleteAllHiddenJobs, permanentDeleteHiddenJobs, restoreJob } from "../data/store.js";
+import { getHiddenJobs, getJobPostings, permanentDeleteAllHiddenJobs, permanentDeleteHiddenJobs, restoreJob } from "../data/store.js";
 import { runAiBatchNow } from "../scheduler/aiBatchJob.js";
 import { runNotifyNow } from "../scheduler/notifyJob.js";
 import { getRunHistory } from "../scheduler/runLog.js";
@@ -26,6 +26,11 @@ adminRouter.post("/notify/run", async (_req, res) => {
 adminRouter.post("/ai/run", (_req, res) => {
   runAiBatchNow().catch((error) => console.error("[admin] AI batch failed:", error));
   res.status(202).json({ started: true });
+});
+
+adminRouter.get("/favorites", async (_req, res) => {
+  const all = await getJobPostings();
+  res.json(all.filter((j) => j.isFavorite === true));
 });
 
 const HIDDEN_PAGE_SIZE = 20;
