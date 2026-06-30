@@ -2,7 +2,7 @@ import { Router } from "express";
 import { getHiddenJobs, getJobPostings, permanentDeleteAllHiddenJobs, permanentDeleteHiddenJobs, restoreJob } from "../data/store.js";
 import { runAiBatchNow } from "../scheduler/aiBatchJob.js";
 import { runNotifyNow } from "../scheduler/notifyJob.js";
-import { getRunHistory } from "../scheduler/runLog.js";
+import { getRunHistory, isJobRunning } from "../scheduler/runLog.js";
 import { runScrapeNow } from "../scheduler/scrapeJob.js";
 
 export const adminRouter = Router();
@@ -19,6 +19,11 @@ adminRouter.post("/scrape/run", async (req, res) => {
 
 adminRouter.post("/notify/run", async (_req, res) => {
   res.json(await runNotifyNow());
+});
+
+adminRouter.get("/ai/status", async (_req, res) => {
+  const running = await isJobRunning("aiBatch");
+  res.json({ running });
 });
 
 // 건당 4~5분, 최대 몇 시간 걸릴 수 있어 응답을 기다리지 않고 즉시 시작만 알린다.

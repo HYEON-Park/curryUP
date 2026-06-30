@@ -4,6 +4,13 @@
 
 재시작 요청 시 반드시 아래 순서로 처리한다.
 
+0. **AI 배치 실행 여부 먼저 확인**
+   ```powershell
+   Invoke-RestMethod "http://localhost:4000/api/admin/ai/status"
+   ```
+   - `running: true` → 사용자에게 알리고 **재시작 중단**. 명시적 허락 없이 절대 재시작하지 않는다.
+   - `running: false` 또는 서버가 꺼진 상태 → 다음 단계 진행
+
 1. WMI로 백엔드 관련 프로세스 수 확인
 2. 1개만 구동 중 → kill 후 재시작
 3. 2개 이상 → 전체 kill 후 1개만 기동

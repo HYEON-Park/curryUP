@@ -138,6 +138,11 @@ export async function updateProgress(jobName: string, progress: RunProgress): Pr
   await writeLog(log);
 }
 
+export async function isJobRunning(jobName: string): Promise<boolean> {
+  const log = await readLog();
+  return log.some((record) => record.jobName === jobName && record.status === "running");
+}
+
 export async function getRunHistory(page: number, pageSize = 20): Promise<RunHistoryPage> {
   const log = await readLog();
   const sorted = [...log].sort((a, b) => b.startedAt.localeCompare(a.startedAt));
