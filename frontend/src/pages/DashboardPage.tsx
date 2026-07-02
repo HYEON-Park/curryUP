@@ -18,18 +18,26 @@ export function DashboardPage() {
   const [totalItems, setTotalItems] = useState(0);
   const [collecting, setCollecting] = useState(false);
   const [collectStatus, setCollectStatus] = useState<string | null>(null);
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   function setPage(n: number) {
     setSearchParams({ page: String(n) }, { replace: true });
   }
 
   useEffect(() => {
-    fetchJobs(page).then((data) => {
+    fetchJobs(page, searchQuery || undefined).then((data) => {
       setItems(data.items);
       setTotalPages(data.totalPages);
       setTotalItems(data.totalItems);
     });
-  }, [page]);
+  }, [page, searchQuery]);
+
+  function handleSearch() {
+    const q = searchInput.trim();
+    setSearchQuery(q);
+    setPage(1);
+  }
 
   async function handleCollect() {
     setCollecting(true);
@@ -39,7 +47,7 @@ export function DashboardPage() {
       setCollectStatus(
         `${result.collected}건 수집, ${result.newlyMatched}건 신규 매칭 (문서 생성은 23:00 배치에서 처리됩니다)`
       );
-      const data = await fetchJobs(1);
+      const data = await fetchJobs(1, searchQuery || undefined);
       setPage(1);
       setItems(data.items);
       setTotalPages(data.totalPages);
@@ -53,7 +61,7 @@ export function DashboardPage() {
 
   async function handleDelete(id: string) {
     await deleteJob(id);
-    const data = await fetchJobs(page);
+    const data = await fetchJobs(page, searchQuery || undefined);
     setItems(data.items);
     setTotalPages(data.totalPages);
     setTotalItems(data.totalItems);
@@ -66,17 +74,37 @@ export function DashboardPage() {
     );
   }
 
+  const isEmpty = items.length === 0;
+  const isSearchActive = searchQuery.length > 0;
+
   return (
     <div>
       <div className="dashboard-toolbar">
-        {collectStatus && <span>{collectStatus}</span>}
-        <button onClick={handleCollect} disabled={collecting}>
-          {collecting ? "공고업데이트 중..." : "공고업데이트"}
-        </button>
+        <div className="dashboard-toolbar-top">
+          {collectStatus && <span>{collectStatus}</span>}
+          <button onClick={handleCollect} disabled={collecting}>
+            {collecting ? "UPDATE 중..." : "UPDATE"}
+          </button>
+        </div>
+        <div className="dashboard-search">
+          <input
+            type="text"
+            className="search-input"
+            placeholder="회사명을 입력하세요."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+          />
+          <button className="search-btn" onClick={handleSearch}>
+            검색
+          </button>
+        </div>
       </div>
 
-      {items.length === 0 ? (
+      {isEmpty && !isSearchActive ? (
         <p>아직 수집된 공고가 없습니다. 매일 00:00~09:00 사이 자동으로 수집됩니다.</p>
+      ) : isEmpty && isSearchActive ? (
+        <p className="search-empty">검색 결과와 일치하는 공고가 없습니다.</p>
       ) : (
         <>
           <div className="job-grid">

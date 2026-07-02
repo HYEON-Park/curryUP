@@ -132,10 +132,16 @@ button[type="submit"] {
 
 .dashboard-toolbar {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 0 16px 16px;
+}
+
+.dashboard-toolbar-top {
+  display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 16px 16px;
 }
 
 .dashboard-toolbar button {
@@ -152,6 +158,49 @@ button[type="submit"] {
 .dashboard-toolbar button:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+.dashboard-search {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.search-input {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+  width: 220px;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.search-btn {
+  font: inherit;
+  font-weight: 600;
+  padding: 6px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+.search-btn:hover {
+  opacity: 0.88;
+}
+
+.search-empty {
+  text-align: center;
+  color: var(--text);
+  margin-top: 60px;
+  font-size: 15px;
 }
 
 .job-grid {

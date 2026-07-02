@@ -1,29 +1,20 @@
 import { createHash } from "node:crypto";
-import { getCrawlTargetUrls } from "../config/skillFileParser.js";
+import { getCrawlTargetUrls, getImminentThresholdDays, reloadSkillFile } from "../config/skillFileParser.js";
 import { getJobPostings, getProfile, saveJobPostings } from "../data/store.js";
 import { isMatch } from "../matching/matchEngine.js";
 import { findScraperFor } from "../scrapers/index.js";
 import type { JobPosting } from "../types.js";
+import { daysUntilDeadline } from "../utils/deadline.js";
 
 function idFor(sourceUrl: string): string {
   return createHash("sha1").update(sourceUrl).digest("hex").slice(0, 16);
 }
 
-function daysUntilDeadline(deadline: string | null): number | null {
-  if (!deadline) return null;
-  const match = deadline.match(/(\d{1,2})\/(\d{1,2})/);
-  if (!match) return null;
-  const month = Number(match[1]);
-  const day = Number(match[2]);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  let target = new Date(today.getFullYear(), month - 1, day);
-  if (target < today) target = new Date(today.getFullYear() + 1, month - 1, day);
-  return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-}
-
 export async function runScrapeAndMatch(): Promise<{ collected: number; newlyMatched: number }> {
+  // UPDATE 버튼 클릭(=수집 트리거) 시마다 SKILL.md를 다시 읽어 URL 목록·삭제 기준을 최신화한다.
+  await reloadSkillFile();
   const urls = await getCrawlTargetUrls();
+  const thresholdDays = await getImminentThresholdDays();
   const profile = await getProfile();
   const existingJobs = await getJobPostings();
   const existingById = new Map(existingJobs.map((job) => [job.id, job]));
@@ -48,7 +39,7 @@ export async function runScrapeAndMatch(): Promise<{ collected: number; newlyMat
       if (!isMatch(profile, posting)) continue;
 
       const days = daysUntilDeadline(posting.deadline);
-      if (days !== null && days <= 1) continue;
+      if (days !== null && days <= thresholdDays) continue;
 
       const job: JobPosting = { ...posting, id, documents: null };
       existingById.set(id, job);

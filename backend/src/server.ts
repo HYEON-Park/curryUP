@@ -2,7 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import http from "node:http";
 import express from "express";
-import { getProfile } from "./data/store.js";
+import { deleteImminentJobPostings, getProfile } from "./data/store.js";
 import { notifyWithLink } from "./notify/osNotifier.js";
 import { adminRouter } from "./routes/admin.js";
 import { collectRouter } from "./routes/collect.js";
@@ -58,6 +58,9 @@ server.listen(PORT, () => {
 
   // 직전 종료가 비정상적이었다면 "running"으로 멈춰있는 이력을 failed로 정리한다.
   reconcileInterruptedRuns().catch((error) => console.error("[reconcileInterruptedRuns] failed:", error));
+
+  // 기동 시점에 오늘·내일 마감 공고를 즉시 정리한다.
+  deleteImminentJobPostings().catch((error) => console.error("[deleteImminentJobPostings] failed:", error));
 
   // AI 배치 catch-up은 건당 4~5분이 걸릴 수 있으므로 서버 기동(listen)을 막지 않고 백그라운드로 실행한다.
   catchUpNotifyJob().catch((error) => console.error("[catchUpNotifyJob] failed:", error));

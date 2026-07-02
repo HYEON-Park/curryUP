@@ -1,7 +1,9 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { getImminentThresholdDays } from "../config/skillFileParser.js";
 import type { HiddenJobPosting, JobPosting, UserProfile } from "../types.js";
+import { daysUntilDeadline } from "../utils/deadline.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROFILE_PATH = path.join(__dirname, "userProfile.json");
@@ -95,6 +97,20 @@ export async function deleteTodaysJobPostings(): Promise<void> {
   const todayKey = new Date().toISOString().slice(0, 10);
   const remaining = jobs.filter((job) => job.collectedAt.slice(0, 10) !== todayKey);
   await saveJobPostings(remaining);
+}
+
+// 서버 기동 시: SKILL.md의 "마감 임박 공고 자동 삭제" 기준(D-N) 이내인 공고를 즉시 제거한다.
+export async function deleteImminentJobPostings(): Promise<void> {
+  const jobs = await getJobPostings();
+  const thresholdDays = await getImminentThresholdDays();
+  const remaining = jobs.filter((j) => {
+    const days = daysUntilDeadline(j.deadline);
+    return days === null || days > thresholdDays;
+  });
+  if (remaining.length < jobs.length) {
+    console.log(`[store] 마감임박 공고 ${jobs.length - remaining.length}건 제거`);
+    await saveJobPostings(remaining);
+  }
 }
 
 // deadline 표기("~ 07/05(일)")는 연도가 없어, 수집 시점(collectedAt)을 기준으로 가장

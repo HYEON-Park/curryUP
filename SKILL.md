@@ -6,3 +6,11 @@
 - https://www.saramin.co.kr/zf_user/search/recruit?searchType=search&searchword=풀스택+개발
 - https://www.jobkorea.co.kr/Search/?stext=백엔드+개발
 - https://www.jobkorea.co.kr/Search/?stext=풀스택+개발
+
+# 마감 임박 공고 자동 삭제
+
+공고 수집 후 대시보드에서 아래 조건에 해당하는 공고를 삭제한다.
+
+- 당일 마감 (D-0)
+- D-1 (내일 마감)
+- D-2 (모레 마감)

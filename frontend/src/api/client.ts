@@ -16,8 +16,10 @@ export async function saveProfile(profile: UserProfile): Promise<UserProfile> {
   return res.json();
 }
 
-export async function fetchJobs(page: number): Promise<JobsPage> {
-  const res = await fetch(`${BASE_URL}/jobs?page=${page}`);
+export async function fetchJobs(page: number, q?: string): Promise<JobsPage> {
+  const params = new URLSearchParams({ page: String(page) });
+  if (q) params.set("q", q);
+  const res = await fetch(`${BASE_URL}/jobs?${params}`);
   return res.json();
 }
 
