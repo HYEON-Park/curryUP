@@ -28,13 +28,21 @@ function parseImminentThresholdDays(raw: string): number | null {
   return Math.max(...matches);
 }
 
-export async function reloadSkillFile(): Promise<{ success: boolean; count?: number; error?: string }> {
+export type SkillFileReloadTrigger = "UPDATE" | "STARTUP";
+
+// 트리거 구분(UPDATE/STARTUP) · 실행 시각 · 대상 파일 경로 · 처리 결과를 매번 로그로 남긴다.
+export async function reloadSkillFile(
+  trigger: SkillFileReloadTrigger = "STARTUP"
+): Promise<{ success: boolean; count?: number; error?: string }> {
+  const executedAt = new Date().toISOString();
+  const logPrefix = `[skillFileParser] [${trigger}] ${executedAt} ${SKILL_MD_PATH}`;
+
   let raw: string;
   try {
     raw = await fs.readFile(SKILL_MD_PATH, "utf-8");
   } catch {
     const message = `SKILL.md not found at ${SKILL_MD_PATH}`;
-    console.warn(`[skillFileParser] ${message}`);
+    console.warn(`${logPrefix} 실패: ${message}`);
     if (cachedUrls === null) cachedUrls = [];
     return { success: false, error: message };
   }
@@ -46,7 +54,7 @@ export async function reloadSkillFile(): Promise<{ success: boolean; count?: num
     const threshold = parseImminentThresholdDays(raw);
     if (threshold === null) {
       console.warn(
-        `[skillFileParser] "마감 임박 공고 자동 삭제" 기준(D-N)을 찾지 못해 기본값(D-${DEFAULT_IMMINENT_THRESHOLD_DAYS})을 사용합니다.`
+        `${logPrefix} "마감 임박 공고 자동 삭제" 기준(D-N)을 찾지 못해 기본값(D-${DEFAULT_IMMINENT_THRESHOLD_DAYS})을 사용합니다.`
       );
       if (cachedImminentThresholdDays === null) cachedImminentThresholdDays = DEFAULT_IMMINENT_THRESHOLD_DAYS;
     } else {
@@ -54,12 +62,12 @@ export async function reloadSkillFile(): Promise<{ success: boolean; count?: num
     }
 
     console.log(
-      `[skillFileParser] SKILL.md reloaded: ${urls.length} target URL(s), imminent threshold D-${cachedImminentThresholdDays}`
+      `${logPrefix} 성공: URL ${urls.length}건, 마감임박 기준 D-${cachedImminentThresholdDays}`
     );
     return { success: true, count: urls.length };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(`[skillFileParser] Failed to parse SKILL.md: ${message}`);
+    console.error(`${logPrefix} 실패: ${message}`);
     if (cachedUrls === null) cachedUrls = [];
     if (cachedImminentThresholdDays === null) cachedImminentThresholdDays = DEFAULT_IMMINENT_THRESHOLD_DAYS;
     return { success: false, error: message };

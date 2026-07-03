@@ -2,6 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import http from "node:http";
 import express from "express";
+import { reloadSkillFile } from "./config/skillFileParser.js";
 import { deleteImminentJobPostings, getProfile } from "./data/store.js";
 import { notifyWithLink } from "./notify/osNotifier.js";
 import { adminRouter } from "./routes/admin.js";
@@ -32,6 +33,9 @@ app.use("/api/profile", profileRouter);
 app.use("/api/jobs", jobsRouter);
 app.use("/api/collect", collectRouter);
 app.use("/api/admin", adminRouter);
+
+// 애플리케이션 최초 부트스트랩 단계(서버 기동/재기동 시 공통)에서 SKILL.md를 재적재한다.
+await reloadSkillFile("STARTUP");
 
 startScrapeJob();
 startNotifyJob();

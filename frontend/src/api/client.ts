@@ -28,7 +28,7 @@ export async function fetchJobDetail(id: string): Promise<JobPosting> {
   return res.json();
 }
 
-export async function triggerCollect(): Promise<{ collected: number; newlyMatched: number }> {
+export async function triggerCollect(): Promise<{ collected: number; newlyMatched: number; skillFileWarning?: string }> {
   const res = await fetch(`${BASE_URL}/collect`, { method: "POST" });
   if (!res.ok) throw new Error("수집 요청이 실패했습니다.");
   return res.json();

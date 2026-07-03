@@ -45,7 +45,8 @@ export function DashboardPage() {
     try {
       const result = await triggerCollect();
       setCollectStatus(
-        `${result.collected}건 수집, ${result.newlyMatched}건 신규 매칭 (문서 생성은 23:00 배치에서 처리됩니다)`
+        `${result.collected}건 수집, ${result.newlyMatched}건 신규 매칭 (문서 생성은 23:00 배치에서 처리됩니다)` +
+          (result.skillFileWarning ? ` / ⚠ ${result.skillFileWarning}` : "")
       );
       const data = await fetchJobs(1, searchQuery || undefined);
       setPage(1);

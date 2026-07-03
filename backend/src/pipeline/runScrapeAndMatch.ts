@@ -10,9 +10,13 @@ function idFor(sourceUrl: string): string {
   return createHash("sha1").update(sourceUrl).digest("hex").slice(0, 16);
 }
 
-export async function runScrapeAndMatch(): Promise<{ collected: number; newlyMatched: number }> {
+export async function runScrapeAndMatch(): Promise<{
+  collected: number;
+  newlyMatched: number;
+  skillFileWarning?: string;
+}> {
   // UPDATE 버튼 클릭(=수집 트리거) 시마다 SKILL.md를 다시 읽어 URL 목록·삭제 기준을 최신화한다.
-  await reloadSkillFile();
+  const reloadResult = await reloadSkillFile("UPDATE");
   const urls = await getCrawlTargetUrls();
   const thresholdDays = await getImminentThresholdDays();
   const profile = await getProfile();
@@ -48,5 +52,9 @@ export async function runScrapeAndMatch(): Promise<{ collected: number; newlyMat
   }
 
   await saveJobPostings([...existingById.values()]);
-  return { collected, newlyMatched };
+  return {
+    collected,
+    newlyMatched,
+    ...(reloadResult.success ? {} : { skillFileWarning: `SKILL.md 재적재 실패: ${reloadResult.error}` }),
+  };
 }

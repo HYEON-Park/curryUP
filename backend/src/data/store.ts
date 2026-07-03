@@ -65,6 +65,7 @@ export async function getHiddenJobs(): Promise<HiddenJobPosting[]> {
   return readJson(HIDDEN_JOBS_PATH, []);
 }
 
+// 공고 삭제 시 연관된 생성 문서(자기소개서/경력기술서 등)도 함께 삭제한다.
 export async function hideJob(id: string): Promise<boolean> {
   const jobs = await getJobPostings();
   const idx = jobs.findIndex((j) => j.id === id);
@@ -72,7 +73,7 @@ export async function hideJob(id: string): Promise<boolean> {
   const [job] = jobs.splice(idx, 1);
   await saveJobPostings(jobs);
   const hidden = await getHiddenJobs();
-  hidden.unshift({ ...job, hiddenAt: new Date().toISOString() });
+  hidden.unshift({ ...job, documents: null, hiddenAt: new Date().toISOString() });
   await writeJson(HIDDEN_JOBS_PATH, hidden);
   return true;
 }
