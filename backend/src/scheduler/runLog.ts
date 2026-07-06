@@ -64,6 +64,22 @@ async function writeLog(log: RunRecord[]): Promise<void> {
   await fs.writeFile(RUN_LOG_PATH, JSON.stringify(pruneOldRecords(log), null, 2), "utf-8");
 }
 
+// updateProgress()(fire-and-forget)와 recordRun()의 완료 기록 쓰기가 각자 readLog→writeLog를
+// 수행하면서 순서가 섞이면, 늦게 끝나는 쪽이 상대의 쓰기를 덮어써 "running"이 영구 고착될 수 있다.
+// 모든 read-modify-write를 이 큐로 직렬화해, 호출 순서대로만 반영되게 한다.
+let logMutex: Promise<unknown> = Promise.resolve();
+function withLog<T>(fn: (log: RunRecord[]) => Promise<T>): Promise<T> {
+  const run = logMutex.then(async () => {
+    const log = await readLog();
+    return fn(log);
+  });
+  logMutex = run.then(
+    () => undefined,
+    () => undefined
+  );
+  return run;
+}
+
 // 서버가 비정상 종료되면 "running" 상태로 멈춘 레코드가 영원히 남는다.
 // 다음 기동 시점에 그런 레코드를 failed로 정리해, 관리자 페이지에 좀비 "진행중" 행이 보이지 않게 한다.
 export async function reconcileInterruptedRuns(): Promise<void> {
@@ -91,10 +107,11 @@ async function recordRun(jobName: string, trigger: RunTrigger, task: () => Promi
   const startedAt = new Date().toISOString();
   console.log(`[runLog] ${jobName} 처리 시작 (${trigger}): ${startedAt}`);
 
-  let log = await readLog();
   let record: RunRecord = { id, jobName, trigger, date: todayKey(), startedAt, finishedAt: null, status: "running" };
-  log.push(record);
-  await writeLog(log);
+  await withLog(async (log) => {
+    log.push(record);
+    await writeLog(log);
+  });
 
   try {
     await task();
@@ -109,11 +126,12 @@ async function recordRun(jobName: string, trigger: RunTrigger, task: () => Promi
   }
   record.finishedAt = new Date().toISOString();
 
-  log = await readLog();
-  const index = log.findIndex((entry) => entry.id === id);
-  if (index >= 0) log[index] = record;
-  else log.push(record);
-  await writeLog(log);
+  await withLog(async (log) => {
+    const index = log.findIndex((entry) => entry.id === id);
+    if (index >= 0) log[index] = record;
+    else log.push(record);
+    await writeLog(log);
+  });
 
   console.log(`[runLog] ${jobName} 처리 종료: ${record.finishedAt} (${record.status})`);
   return record;
@@ -130,12 +148,13 @@ export function runManualJob(jobName: string, task: () => Promise<void>): Promis
 }
 
 export async function updateProgress(jobName: string, progress: RunProgress): Promise<void> {
-  const log = await readLog();
-  const runningEntries = log.filter((record) => record.jobName === jobName && record.status === "running");
-  const latest = runningEntries[runningEntries.length - 1];
-  if (!latest) return;
-  latest.progress = progress;
-  await writeLog(log);
+  await withLog(async (log) => {
+    const runningEntries = log.filter((record) => record.jobName === jobName && record.status === "running");
+    const latest = runningEntries[runningEntries.length - 1];
+    if (!latest) return;
+    latest.progress = progress;
+    await writeLog(log);
+  });
 }
 
 export async function isJobRunning(jobName: string): Promise<boolean> {
