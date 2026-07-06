@@ -1,5 +1,10 @@
 import cron from "node-cron";
-import { deleteExpiredJobPostings, deleteTodaysJobPostings, saveJobPostings } from "../data/store.js";
+import {
+  deleteExpiredJobPostings,
+  deleteImminentJobPostings,
+  deleteTodaysJobPostings,
+  saveJobPostings,
+} from "../data/store.js";
 import { runScrapeAndMatch } from "../pipeline/runScrapeAndMatch.js";
 import { runManualJob, runScheduledJob, type RunRecord } from "./runLog.js";
 
@@ -9,6 +14,9 @@ const JOB_NAME = "scrape";
 
 async function scrapeTask(): Promise<void> {
   await deleteExpiredJobPostings();
+  // D-N 경계는 날짜 단위로만 바뀌므로, 서버 기동 시 정리에 더해 매일 자정에도 한 번 더 정리한다
+  // (서버가 며칠씩 재시작 없이 떠 있어도 마감임박 공고가 계속 걸러지도록).
+  await deleteImminentJobPostings();
   const matchResult = await runScrapeAndMatch();
   console.log("[scrapeJob] scrape+match:", matchResult);
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { deleteJob, fetchJobs, toggleFavorite, triggerCollect } from "../api/client";
+import { deleteJob, fetchAllJobs, fetchJobs, toggleFavorite, triggerCollect } from "../api/client";
 import type { JobPosting } from "../types";
 import { formatDday } from "../utils/dday";
 
@@ -10,6 +10,9 @@ function sourceLabel(sourceUrl: string): string {
   return "?";
 }
 
+type SearchField = "company" | "title" | "location";
+const PAGE_SIZE = 12; // 백엔드 PAGE_SIZE와 동일 — 검색 중 클라이언트 페이지네이션에 사용
+
 export function DashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10) || 1);
@@ -18,24 +21,35 @@ export function DashboardPage() {
   const [totalItems, setTotalItems] = useState(0);
   const [collecting, setCollecting] = useState(false);
   const [collectStatus, setCollectStatus] = useState<string | null>(null);
+  const [searchField, setSearchField] = useState<SearchField>("company");
   const [searchInput, setSearchInput] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [activeSearch, setActiveSearch] = useState<{ field: SearchField; term: string } | null>(null);
+  // 검색은 전체 페이지를 대상으로 해야 하므로, 검색 활성화 시 전체 공고를 한 번 받아와 클라이언트에서 필터링·페이지네이션한다.
+  const [allJobs, setAllJobs] = useState<JobPosting[]>([]);
 
   function setPage(n: number) {
     setSearchParams({ page: String(n) }, { replace: true });
   }
 
   useEffect(() => {
-    fetchJobs(page, searchQuery || undefined).then((data) => {
+    if (activeSearch) return;
+    fetchJobs(page).then((data) => {
       setItems(data.items);
       setTotalPages(data.totalPages);
       setTotalItems(data.totalItems);
     });
-  }, [page, searchQuery]);
+  }, [page, activeSearch]);
 
-  function handleSearch() {
-    const q = searchInput.trim();
-    setSearchQuery(q);
+  async function handleSearch() {
+    const term = searchInput.trim().toLowerCase();
+    if (!term) {
+      setActiveSearch(null);
+      setPage(1);
+      return;
+    }
+    const data = await fetchAllJobs();
+    setAllJobs(data.items);
+    setActiveSearch({ field: searchField, term });
     setPage(1);
   }
 
@@ -48,11 +62,16 @@ export function DashboardPage() {
         `${result.collected}건 수집, ${result.newlyMatched}건 신규 매칭 (문서 생성은 23:00 배치에서 처리됩니다)` +
           (result.skillFileWarning ? ` / ⚠ ${result.skillFileWarning}` : "")
       );
-      const data = await fetchJobs(1, searchQuery || undefined);
+      if (activeSearch) {
+        const data = await fetchAllJobs();
+        setAllJobs(data.items);
+      } else {
+        const data = await fetchJobs(1);
+        setItems(data.items);
+        setTotalPages(data.totalPages);
+        setTotalItems(data.totalItems);
+      }
       setPage(1);
-      setItems(data.items);
-      setTotalPages(data.totalPages);
-      setTotalItems(data.totalItems);
     } catch {
       setCollectStatus("수집 실패");
     } finally {
@@ -62,21 +81,37 @@ export function DashboardPage() {
 
   async function handleDelete(id: string) {
     await deleteJob(id);
-    const data = await fetchJobs(page, searchQuery || undefined);
-    setItems(data.items);
-    setTotalPages(data.totalPages);
-    setTotalItems(data.totalItems);
+    if (activeSearch) {
+      const data = await fetchAllJobs();
+      setAllJobs(data.items);
+    } else {
+      const data = await fetchJobs(page);
+      setItems(data.items);
+      setTotalPages(data.totalPages);
+      setTotalItems(data.totalItems);
+    }
   }
 
   async function handleFavorite(id: string) {
     const result = await toggleFavorite(id);
-    setItems((prev) =>
-      prev.map((j) => (j.id === id ? { ...j, isFavorite: result.isFavorite } : j))
-    );
+    const applyFavorite = (list: JobPosting[]) =>
+      list.map((j) => (j.id === id ? { ...j, isFavorite: result.isFavorite } : j));
+    setItems(applyFavorite);
+    setAllJobs(applyFavorite);
   }
 
-  const isEmpty = items.length === 0;
-  const isSearchActive = searchQuery.length > 0;
+  const filteredAll = activeSearch
+    ? allJobs.filter((job) => job[activeSearch.field].trim().toLowerCase().includes(activeSearch.term))
+    : [];
+  const searchTotalPages = Math.max(1, Math.ceil(filteredAll.length / PAGE_SIZE));
+  const searchPageItems = filteredAll.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const displayedItems = activeSearch ? searchPageItems : items;
+  const displayedTotalPages = activeSearch ? searchTotalPages : totalPages;
+  const displayedTotalItems = activeSearch ? filteredAll.length : totalItems;
+
+  const isEmpty = displayedItems.length === 0;
+  const isSearchActive = activeSearch !== null;
 
   return (
     <div>
@@ -88,10 +123,19 @@ export function DashboardPage() {
           </button>
         </div>
         <div className="dashboard-search">
+          <select
+            className="search-field-select"
+            value={searchField}
+            onChange={(e) => setSearchField(e.target.value as SearchField)}
+          >
+            <option value="company">회사명</option>
+            <option value="title">제목</option>
+            <option value="location">지역</option>
+          </select>
           <input
             type="text"
             className="search-input"
-            placeholder="회사명을 입력하세요."
+            placeholder="검색어를 입력하세요."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -109,7 +153,7 @@ export function DashboardPage() {
       ) : (
         <>
           <div className="job-grid">
-            {items.map((job) => (
+            {displayedItems.map((job) => (
               <Link key={job.id} to={`/jobs/${job.id}`} className="job-card">
                 <span className="job-source">{sourceLabel(job.sourceUrl)}</span>
                 <button
@@ -145,20 +189,20 @@ export function DashboardPage() {
             ))}
           </div>
 
-          {totalPages > 1 && (
+          {displayedTotalPages > 1 && (
             <div className="pagination">
               <div className="pagination-nav">
                 <button disabled={page <= 1} onClick={() => setPage(page - 1)}>
                   이전
                 </button>
                 <span>
-                  {page} / {totalPages}
+                  {page} / {displayedTotalPages}
                 </span>
-                <button disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+                <button disabled={page >= displayedTotalPages} onClick={() => setPage(page + 1)}>
                   다음
                 </button>
               </div>
-              <span className="pagination-total">총 {totalItems}개</span>
+              <span className="pagination-total">총 {displayedTotalItems}개</span>
             </div>
           )}
         </>

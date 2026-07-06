@@ -16,10 +16,15 @@ export async function saveProfile(profile: UserProfile): Promise<UserProfile> {
   return res.json();
 }
 
-export async function fetchJobs(page: number, q?: string): Promise<JobsPage> {
+export async function fetchJobs(page: number): Promise<JobsPage> {
   const params = new URLSearchParams({ page: String(page) });
-  if (q) params.set("q", q);
   const res = await fetch(`${BASE_URL}/jobs?${params}`);
+  return res.json();
+}
+
+// 다중 조건 검색은 전체 페이지를 대상으로 해야 해서, 검색 활성화 시 페이지네이션 없이 전체 목록을 받아온다.
+export async function fetchAllJobs(): Promise<{ items: JobPosting[] }> {
+  const res = await fetch(`${BASE_URL}/jobs/all`);
   return res.json();
 }
 

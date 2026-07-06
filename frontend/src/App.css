@@ -166,6 +166,15 @@ button[type="submit"] {
   align-items: center;
 }
 
+.search-field-select {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+}
+
 .search-input {
   padding: 6px 12px;
   border: 1px solid var(--border);
