@@ -62,6 +62,17 @@ export async function runAiBatch(): Promise<{ started: boolean }> {
   return res.json();
 }
 
+export async function runRatingCheckBatch(): Promise<{ started: boolean }> {
+  const res = await fetch(`${BASE_URL}/admin/rating-check/run`, { method: "POST" });
+  if (!res.ok) throw new Error("평점 조회 실행에 실패했습니다.");
+  return res.json();
+}
+
+export async function fetchRatingCheckStatus(): Promise<{ running: boolean }> {
+  const res = await fetch(`${BASE_URL}/admin/rating-check/status`);
+  return res.json();
+}
+
 export async function deleteJob(id: string): Promise<void> {
   const res = await fetch(`${BASE_URL}/jobs/${id}`, { method: "DELETE" });
   if (!res.ok) throw new Error("삭제 요청이 실패했습니다.");

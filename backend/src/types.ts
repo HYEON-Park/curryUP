@@ -30,6 +30,8 @@ export interface JobPosting {
   essayQuestions?: string[];         // ← 추가 권장 (자소서 문항)
   charLimit?: string;                // ← 추가 권장 (글자수 제한)
   isFavorite?: boolean;
+  rating?: string | null;
+  ratingUpdatedAt?: string | null;
 }
 
 export interface GeneratedDocuments {

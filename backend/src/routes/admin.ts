@@ -2,6 +2,7 @@ import { Router } from "express";
 import { getHiddenJobs, getJobPostings, permanentDeleteAllHiddenJobs, permanentDeleteHiddenJobs, restoreJob } from "../data/store.js";
 import { runAiBatchNow } from "../scheduler/aiBatchJob.js";
 import { runNotifyNow } from "../scheduler/notifyJob.js";
+import { RATING_CHECK_JOB_NAME, runRatingCheckNow } from "../scheduler/ratingCheckJob.js";
 import { getRunHistory, isJobRunning } from "../scheduler/runLog.js";
 import { runScrapeNow } from "../scheduler/scrapeJob.js";
 
@@ -30,6 +31,17 @@ adminRouter.get("/ai/status", async (_req, res) => {
 // 진행 상황은 GET /runs 폴링으로 확인한다.
 adminRouter.post("/ai/run", (_req, res) => {
   runAiBatchNow().catch((error) => console.error("[admin] AI batch failed:", error));
+  res.status(202).json({ started: true });
+});
+
+adminRouter.get("/rating-check/status", async (_req, res) => {
+  const running = await isJobRunning(RATING_CHECK_JOB_NAME);
+  res.json({ running });
+});
+
+// 회사 수만큼 순차 크롤링이라 몇 분 걸릴 수 있어 응답을 기다리지 않고 즉시 시작만 알린다.
+adminRouter.post("/rating-check/run", (_req, res) => {
+  runRatingCheckNow().catch((error) => console.error("[admin] rating check batch failed:", error));
   res.status(202).json({ started: true });
 });
 

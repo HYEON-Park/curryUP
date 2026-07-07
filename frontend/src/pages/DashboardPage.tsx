@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { deleteJob, fetchAllJobs, fetchJobs, toggleFavorite, triggerCollect } from "../api/client";
+import {
+  deleteJob,
+  fetchAllJobs,
+  fetchJobs,
+  fetchRatingCheckStatus,
+  runRatingCheckBatch,
+  toggleFavorite,
+  triggerCollect,
+} from "../api/client";
 import type { JobPosting } from "../types";
 import { formatDday } from "../utils/dday";
 
@@ -53,6 +61,20 @@ export function DashboardPage() {
     setPage(1);
   }
 
+  async function refreshCurrentView(targetPage: number) {
+    if (activeSearch) {
+      const data = await fetchAllJobs();
+      setAllJobs(data.items);
+    } else {
+      const data = await fetchJobs(targetPage);
+      setItems(data.items);
+      setTotalPages(data.totalPages);
+      setTotalItems(data.totalItems);
+    }
+  }
+
+  // UPDATE 버튼: 공고 수집이 끝나면 이어서 평점 조회까지 한 번에 실행한다.
+  // 두 배치는 관리자 배치 로그에는 각각 별도 항목(collect / 평점조회)으로 기록된다.
   async function handleCollect() {
     setCollecting(true);
     setCollectStatus("수집 중...");
@@ -60,18 +82,23 @@ export function DashboardPage() {
       const result = await triggerCollect();
       setCollectStatus(
         `${result.collected}건 수집, ${result.newlyMatched}건 신규 매칭 (문서 생성은 23:00 배치에서 처리됩니다)` +
+          (result.skillFileWarning ? ` / ⚠ ${result.skillFileWarning}` : "") +
+          " / 평점 조회 중..."
+      );
+      await refreshCurrentView(1);
+      setPage(1);
+
+      await runRatingCheckBatch();
+      let running = true;
+      while (running) {
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+        ({ running } = await fetchRatingCheckStatus());
+      }
+      await refreshCurrentView(1);
+      setCollectStatus(
+        `${result.collected}건 수집, ${result.newlyMatched}건 신규 매칭, 평점 조회 완료` +
           (result.skillFileWarning ? ` / ⚠ ${result.skillFileWarning}` : "")
       );
-      if (activeSearch) {
-        const data = await fetchAllJobs();
-        setAllJobs(data.items);
-      } else {
-        const data = await fetchJobs(1);
-        setItems(data.items);
-        setTotalPages(data.totalPages);
-        setTotalItems(data.totalItems);
-      }
-      setPage(1);
     } catch {
       setCollectStatus("수집 실패");
     } finally {
@@ -167,7 +194,9 @@ export function DashboardPage() {
                 >
                   {job.isFavorite ? "★" : "☆"}
                 </button>
-                <h3>{job.company}</h3>
+                <h3>
+                  {job.company} <span className="job-rating">({job.rating ?? "—"})</span>
+                </h3>
                 <p>
                   {job.location}
                   <br />

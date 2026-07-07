@@ -33,6 +33,8 @@ export interface JobPosting {
   collectedAt: string;
   documents: GeneratedDocuments | null;
   isFavorite?: boolean;
+  rating?: string | null;
+  ratingUpdatedAt?: string | null;
 }
 
 export interface HiddenJobPosting extends JobPosting {

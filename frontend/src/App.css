@@ -1,7 +1,23 @@
+nav {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  padding: 18px 24px;
+  background: var(--navy);
+  border-bottom: 1px solid var(--navy-soft);
+}
+
 nav a {
-  color: var(--accent);
+  color: #fff;
   text-decoration: none;
   font-weight: 500;
+  opacity: 0.85;
+}
+
+nav a.active {
+  color: var(--gold);
+  font-weight: 700;
+  opacity: 1;
 }
 
 nav button {
@@ -9,9 +25,9 @@ nav button {
   font-weight: 600;
   padding: 6px 16px;
   border-radius: 6px;
-  border: 1px solid var(--accent);
-  background: var(--accent-bg);
-  color: var(--accent);
+  border: 1px solid var(--gold);
+  background: transparent;
+  color: var(--gold);
   cursor: pointer;
 }
 
@@ -86,7 +102,7 @@ button[type="submit"] {
 
 .profile-view {
   max-width: 560px;
-  margin: 0 auto;
+  margin: 15px auto 0;
   text-align: left;
 }
 
@@ -135,7 +151,8 @@ button[type="submit"] {
   flex-direction: column;
   align-items: flex-end;
   gap: 8px;
-  padding: 0 16px 16px;
+  padding: 18px 24px;
+  background: var(--navy);
 }
 
 .dashboard-toolbar-top {
@@ -144,14 +161,19 @@ button[type="submit"] {
   gap: 12px;
 }
 
+.dashboard-toolbar-top span {
+  font-size: 13px;
+  color: #cdd8ee;
+}
+
 .dashboard-toolbar button {
   font: inherit;
   font-weight: 600;
   padding: 6px 16px;
   border-radius: 6px;
-  border: 1px solid var(--accent);
-  background: var(--accent-bg);
-  color: var(--accent);
+  border: 1px solid var(--gold);
+  background: transparent;
+  color: var(--gold);
   cursor: pointer;
 }
 
@@ -168,41 +190,46 @@ button[type="submit"] {
 
 .search-field-select {
   padding: 6px 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--navy-soft);
   border-radius: 6px;
-  background: var(--bg);
-  color: var(--text-h);
+  background: var(--navy);
+  color: #fff;
   font: inherit;
 }
 
 .search-input {
   padding: 6px 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--navy-soft);
   border-radius: 6px;
-  background: var(--bg);
-  color: var(--text-h);
+  background: var(--navy);
+  color: #fff;
   font: inherit;
   width: 220px;
 }
 
-.search-input:focus {
+.search-input::placeholder {
+  color: #8fa3cc;
+}
+
+.search-input:focus,
+.search-field-select:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--gold);
 }
 
 .search-btn {
   font: inherit;
-  font-weight: 600;
+  font-weight: 700;
   padding: 6px 16px;
   border-radius: 6px;
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: #fff;
+  border: 1px solid var(--gold);
+  background: var(--gold);
+  color: var(--navy);
   cursor: pointer;
 }
 
 .search-btn:hover {
-  opacity: 0.88;
+  background: var(--gold-strong);
 }
 
 .search-empty {
@@ -217,6 +244,7 @@ button[type="submit"] {
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 16px;
   padding: 0 16px;
+  margin-top: 15px;
 }
 
 .job-card {
@@ -224,15 +252,29 @@ button[type="submit"] {
   position: relative;
   padding: 16px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
+  background: var(--card-bg);
   text-align: left;
   text-decoration: none;
   color: var(--text-h);
+  box-shadow: 0 1px 2px rgba(0, 33, 81, 0.05);
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.job-card:hover {
+  border-color: var(--gold-strong);
+  box-shadow: 0 4px 12px rgba(0, 33, 81, 0.08);
 }
 
 .job-card h3 {
   margin: 0 0 8px;
   font-size: 18px;
+}
+
+.job-rating {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text);
 }
 
 .job-card p {
@@ -247,8 +289,8 @@ button[type="submit"] {
   bottom: 16px;
   left: 16px;
   font-size: 13px;
-  font-weight: 600;
-  color: var(--accent);
+  font-weight: 700;
+  color: var(--gold-strong);
 }
 
 .job-card-delete {
@@ -310,21 +352,20 @@ button[type="submit"] {
   border: none;
   border-radius: 50%;
   background: none;
-  color: var(--text);
+  color: var(--gold-strong);
   cursor: pointer;
   font-size: 15px;
   line-height: 1;
   padding: 0;
-  opacity: 0.2;
+  opacity: 0.4;
   transition: opacity 0.15s, color 0.15s;
 }
 
 .job-card:hover .job-card-favorite {
-  opacity: 0.6;
+  opacity: 0.75;
 }
 
 .job-card-favorite.favorited {
-  color: #f5a623;
   opacity: 1;
 }
 
@@ -426,7 +467,7 @@ button[type="submit"] {
 
 .profile-edit-form {
   max-width: 920px;
-  margin: 0 auto;
+  margin: 15px auto 0;
   text-align: left;
 }
 
@@ -616,7 +657,7 @@ button[type="submit"] {
 
 .admin-batch {
   max-width: 920px;
-  margin: 0 auto;
+  margin: 15px auto 0;
   text-align: left;
   padding: 0 16px;
 }
@@ -666,9 +707,9 @@ button[type="submit"] {
   font-size: 13px;
   padding: 4px 12px;
   border-radius: 6px;
-  border: 1px solid #f5a623;
-  background: rgba(245, 166, 35, 0.08);
-  color: #c8870a;
+  border: 1px solid var(--gold-strong);
+  background: rgba(232, 185, 110, 0.12);
+  color: #9a6a1e;
   cursor: pointer;
 }
 

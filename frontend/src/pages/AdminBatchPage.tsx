@@ -15,8 +15,10 @@ import type { HiddenJobPosting, JobPosting, RunRecord } from "../types";
 
 const JOB_LABELS: Record<string, string> = {
   scrape: "공고 스크래핑 배치",
+  collect: "대시보드 수동 수집",
   notify: "오전 프로필 알림 배치",
   aiBatch: "야간 AI 문서 생성 배치",
+  평점조회: "평점 조회 배치",
 };
 
 const STATUS_LABELS: Record<RunRecord["status"], string> = {

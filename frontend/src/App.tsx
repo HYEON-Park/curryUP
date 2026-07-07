@@ -1,4 +1,4 @@
-import { Link, Route, Routes } from "react-router-dom";
+import { NavLink, Route, Routes } from "react-router-dom";
 import { AdminBatchPage } from "./pages/AdminBatchPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { JobDetailPage } from "./pages/JobDetailPage";
@@ -9,10 +9,16 @@ import "./App.css";
 function App() {
   return (
     <div>
-      <nav style={{ display: "flex", gap: 16, padding: 16, alignItems: "center" }}>
-        <Link to="/">대시보드</Link>
-        <Link to="/profile">프로필</Link>
-        <Link to="/admin">관리자</Link>
+      <nav>
+        <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>
+          대시보드
+        </NavLink>
+        <NavLink to="/profile" className={({ isActive }) => (isActive ? "active" : "")}>
+          프로필
+        </NavLink>
+        <NavLink to="/admin" className={({ isActive }) => (isActive ? "active" : "")}>
+          관리자
+        </NavLink>
       </nav>
       <Routes>
         <Route path="/" element={<DashboardPage />} />
