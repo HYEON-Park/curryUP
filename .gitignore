@@ -9,3 +9,9 @@ backend/src/data/userProfile.json
 backend/src/data/jobPostings.json
 backend/src/data/hiddenJobPostings.json
 backend/src/data/runLog.json
+backend/src/data/polished/
+
+# 커밋 금지 (CLAUDE.md 참고)
+.idea/
+backend/run_single_job.mts
+backend/scripts/setup.zip
