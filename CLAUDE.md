@@ -44,6 +44,8 @@ cd C:\R\backend; npx tsx src/server.ts
 - `backend/src/data/jobPostings.json`
 - `backend/src/data/hiddenJobPostings.json`
 - `backend/src/data/runLog.json`
+- `backend/src/data/polished/` (폴더 전체 — 다듬은 자소서 등 개인 데이터 포함)
+- `backend/src/data/purgedJobHistory.json`
 
 아래 파일도 절대 commit·push하지 않는다.
 

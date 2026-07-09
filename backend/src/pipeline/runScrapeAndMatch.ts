@@ -1,6 +1,13 @@
 import { createHash } from "node:crypto";
 import { getCrawlTargetUrls, getImminentThresholdDays, reloadSkillFile } from "../config/skillFileParser.js";
-import { getJobPostings, getProfile, saveJobPostings } from "../data/store.js";
+import {
+  getHiddenJobs,
+  getJobPostings,
+  getProfile,
+  getPurgedJobHistory,
+  purgedJobKey,
+  saveJobPostings,
+} from "../data/store.js";
 import { isMatch } from "../matching/matchEngine.js";
 import { findScraperFor } from "../scrapers/index.js";
 import type { JobPosting } from "../types.js";
@@ -23,9 +30,16 @@ export async function runScrapeAndMatch(): Promise<{
   const existingJobs = await getJobPostings();
   const existingById = new Map(existingJobs.map((job) => [job.id, job]));
   const knownSourceUrls = new Set(existingJobs.map((job) => job.sourceUrl));
+  // 사용자가 영구 삭제한 공고(기업명+제목 일치)는 재수집하지 않는다.
+  const purgedKeys = new Set((await getPurgedJobHistory()).map(purgedJobKey));
+  // 숨김 처리된 공고도 대시보드에 다시 올리지 않는다 (복원은 관리자 페이지에서만).
+  const hiddenJobs = await getHiddenJobs();
+  const hiddenIds = new Set(hiddenJobs.map((job) => job.id));
+  for (const job of hiddenJobs) knownSourceUrls.add(job.sourceUrl);
 
   let collected = 0;
   let newlyMatched = 0;
+  let purgedSkipped = 0;
 
   for (const url of urls) {
     const scraper = findScraperFor(url);
@@ -40,6 +54,11 @@ export async function runScrapeAndMatch(): Promise<{
     for (const posting of postings) {
       const id = idFor(posting.sourceUrl);
       if (existingById.has(id)) continue;
+      if (hiddenIds.has(id)) continue;
+      if (purgedKeys.has(purgedJobKey(posting))) {
+        purgedSkipped++;
+        continue;
+      }
       if (!isMatch(profile, posting)) continue;
 
       const days = daysUntilDeadline(posting.deadline);
@@ -51,6 +70,7 @@ export async function runScrapeAndMatch(): Promise<{
     }
   }
 
+  if (purgedSkipped > 0) console.log(`[scrape] 영구 삭제 이력 일치로 ${purgedSkipped}건 수집 제외`);
   await saveJobPostings([...existingById.values()]);
   return {
     collected,

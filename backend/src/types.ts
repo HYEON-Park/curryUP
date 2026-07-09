@@ -45,6 +45,13 @@ export interface HiddenJobPosting extends JobPosting {
   hiddenAt: string;
 }
 
+// 영구 삭제 공고 이력: 스크래핑 배치가 같은 공고(기업명+제목 일치)를 재수집하지 않도록 보관한다.
+export interface PurgedJobHistoryEntry {
+  company: string;
+  title: string;
+  purgedAt: string;
+}
+
 export interface RunProgress {
   total: number;
   completed: number;

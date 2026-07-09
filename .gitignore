@@ -10,6 +10,7 @@ backend/src/data/jobPostings.json
 backend/src/data/hiddenJobPostings.json
 backend/src/data/runLog.json
 backend/src/data/polished/
+backend/src/data/purgedJobHistory.json
 
 # 커밋 금지 (CLAUDE.md 참고)
 .idea/
