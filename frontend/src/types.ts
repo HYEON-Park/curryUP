@@ -16,6 +16,7 @@ export interface GeneratedDocuments {
   coverLetter: string;
   intro: string;
   workExperience: string;
+  matchReport?: string;
   generatedAt: string;
 }
 

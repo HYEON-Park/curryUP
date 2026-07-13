@@ -465,6 +465,99 @@ button[type="submit"] {
   border-radius: 8px;
 }
 
+/* 매칭표 탭: 매칭률 사전 평가 그래프 + 나머지 본문 */
+.match-report {
+  white-space: normal;
+  text-align: left;
+  background: none;
+  padding: 0;
+}
+
+.match-chart {
+  background: #fff;
+  border: 1px solid #e2e0d8;
+  border-radius: 16px;
+  padding: 20px 24px 8px;
+}
+
+.match-chart-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e2e0d8;
+}
+
+.match-chart-title {
+  font-size: 19px;
+  font-weight: 700;
+  color: #2c2c2a;
+}
+
+.match-chart-overall {
+  font-size: 15px;
+  font-weight: 600;
+  color: #0f6e56;
+}
+
+.match-chart-list {
+  list-style: none;
+  margin: 0;
+  padding: 16px 0 0;
+}
+
+.match-row + .match-row {
+  margin-top: 20px;
+}
+
+.match-row-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.match-row-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c2c2a;
+}
+
+.match-row-grade {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.match-bar-track {
+  height: 18px;
+  border-radius: 6px;
+  background: #eeece4;
+  overflow: hidden;
+}
+
+.match-bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.4s ease;
+}
+
+.match-row-reason {
+  margin: 8px 0 0;
+  font-size: 13.5px;
+  line-height: 150%;
+  color: #6b6a64;
+}
+
+.match-report-rest {
+  white-space: pre-wrap;
+  font-family: var(--sans);
+  line-height: 165%;
+  background: var(--code-bg);
+  padding: 16px;
+  border-radius: 8px;
+  margin: 16px 0 0;
+}
+
 .profile-edit-form {
   max-width: 920px;
   margin: 15px auto 0;

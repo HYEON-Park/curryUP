@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { fetchJobDetail } from "../api/client";
+import { MatchReport } from "../components/MatchReport";
 import type { JobPosting } from "../types";
 
-const TABS = ["coverLetter", "intro", "workExperience"] as const;
+const TABS = ["matchReport", "coverLetter", "intro", "workExperience"] as const;
 type Tab = (typeof TABS)[number];
 
 const TAB_LABELS: Record<Tab, string> = {
+  matchReport: "매칭표",
   coverLetter: "자기소개서",
   intro: "소개",
   workExperience: "경력사항",
@@ -16,13 +18,21 @@ export function JobDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [job, setJob] = useState<JobPosting | null>(null);
-  const [activeTab, setActiveTab] = useState<Tab>("coverLetter");
+  const [activeTab, setActiveTab] = useState<Tab | null>(null);
 
   useEffect(() => {
-    if (id) fetchJobDetail(id).then(setJob);
+    if (!id) return;
+    fetchJobDetail(id).then((j) => {
+      setJob(j);
+      // 내용이 있는 첫 번째 탭을 기본으로 연다. TABS 순서상 매칭표가 우선된다.
+      const available = TABS.filter((tab) => j.documents?.[tab]);
+      setActiveTab(available[0] ?? null);
+    });
   }, [id]);
 
   if (!job) return <p>불러오는 중...</p>;
+
+  const availableTabs = TABS.filter((tab) => job.documents?.[tab]);
 
   return (
     <div className="job-detail">
@@ -37,10 +47,10 @@ export function JobDetailPage() {
         원본 공고 보기
       </a>
 
-      {job.documents ? (
+      {job.documents && activeTab ? (
         <>
           <div className="tabs">
-            {TABS.map((tab) => (
+            {availableTabs.map((tab) => (
               <button
                 key={tab}
                 className={tab === activeTab ? "active" : ""}
@@ -50,7 +60,11 @@ export function JobDetailPage() {
               </button>
             ))}
           </div>
-          <pre className="doc-content">{job.documents[activeTab]}</pre>
+          {activeTab === "matchReport" ? (
+            <MatchReport text={job.documents.matchReport ?? ""} />
+          ) : (
+            <pre className="doc-content">{job.documents[activeTab]}</pre>
+          )}
         </>
       ) : (
         <p>아직 생성된 문서가 없습니다.</p>
