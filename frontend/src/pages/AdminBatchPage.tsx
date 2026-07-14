@@ -19,6 +19,7 @@ const JOB_LABELS: Record<string, string> = {
   notify: "오전 프로필 알림 배치",
   aiBatch: "야간 AI 문서 생성 배치",
   평점조회: "평점 조회 배치",
+  "write-documents": "문서 작성 배치 (Claude)",
 };
 
 const STATUS_LABELS: Record<RunRecord["status"], string> = {

@@ -1,12 +1,13 @@
 import { Router } from "express";
 import { runScrapeAndMatch } from "../pipeline/runScrapeAndMatch.js";
+import { runRatingCheckNow } from "../scheduler/ratingCheckJob.js";
 import { runManualJob } from "../scheduler/runLog.js";
 
 export const collectRouter = Router();
 const JOB_NAME = "collect";
 
-// 문서 생성(건당 4~5분)은 23:00 AI 배치(aiBatchJob)에서 일괄 처리한다.
-// 여기서 동시에 트리거하면 배치와 동시에 jobPostings.json을 써서 데이터가 덮어써질 수 있어 분리해둔다.
+// 문서 생성은 별도 문서 작성 배치가 담당한다. 여기서 동시에 트리거하면 배치와 동시에
+// jobPostings.json을 써서 데이터가 덮어써질 수 있어 분리해둔다.
 collectRouter.post("/", async (_req, res) => {
   let result: Awaited<ReturnType<typeof runScrapeAndMatch>> | undefined;
   const record = await runManualJob(JOB_NAME, async () => {
@@ -17,5 +18,14 @@ collectRouter.post("/", async (_req, res) => {
     res.status(500).json({ error: "수집 중 오류가 발생했습니다." });
     return;
   }
+
+  // 수집이 끝나면 평점 조회를 백엔드에서 무조건 이어서 실행한다.
+  // 이전에는 프런트(UPDATE 버튼)가 수집 완료 후 평점 조회를 호출했는데, 수집 도중 탭을
+  // 새로고침·이동·종료하면 그 후속 호출이 사라져 평점 조회가 누락됐다. 이제 수집 완료
+  // 시점에 서버가 직접 시작해 브라우저 상태와 무관하게 항상 실행되도록 보장한다.
+  // 회사 수만큼 순차 크롤링이라 수 분 걸릴 수 있어 응답은 기다리지 않고 시작만 시킨다
+  // (프런트는 rating-check/status로 완료를 폴링한다).
+  runRatingCheckNow().catch((error) => console.error("[manual collect] rating check failed:", error));
+
   res.json(result);
 });

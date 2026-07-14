@@ -5,17 +5,24 @@ import {
   fetchAllJobs,
   fetchJobs,
   fetchRatingCheckStatus,
-  runRatingCheckBatch,
   toggleFavorite,
   triggerCollect,
 } from "../api/client";
 import type { JobPosting } from "../types";
 import { formatDday } from "../utils/dday";
+import { parseMatchOverall } from "../utils/matchReport";
 
 function sourceLabel(sourceUrl: string): string {
   if (sourceUrl.includes("jobkorea.co.kr")) return "J";
   if (sourceUrl.includes("saramin.co.kr")) return "S";
   return "?";
+}
+
+// 강조 조건: 즐겨찾기 공고이거나, 매칭률 종합 70% 이상.
+function isHighlighted(job: JobPosting): boolean {
+  if (job.isFavorite === true) return true;
+  const overall = parseMatchOverall(job.documents?.matchReport);
+  return overall !== null && overall >= 70;
 }
 
 type SearchField = "company" | "title" | "location";
@@ -73,26 +80,31 @@ export function DashboardPage() {
     }
   }
 
-  // UPDATE 버튼: 공고 수집이 끝나면 이어서 평점 조회까지 한 번에 실행한다.
-  // 두 배치는 관리자 배치 로그에는 각각 별도 항목(collect / 평점조회)으로 기록된다.
+  // UPDATE 버튼: 공고를 수동 수집한다. 수집 완료 직후 평점 조회 배치는 백엔드(/collect)가
+  // 이어서 자동 실행하므로 여기서 따로 트리거하지 않는다(수집 중 탭 이탈로 평점 조회가
+  // 누락되던 문제를 막기 위해 서버 측으로 옮겼다). 두 배치는 관리자 배치 로그에 각각
+  // collect / 평점조회로 기록되며, 여기서는 완료를 폴링해 화면만 갱신한다.
   async function handleCollect() {
     setCollecting(true);
     setCollectStatus("수집 중...");
     try {
       const result = await triggerCollect();
       setCollectStatus(
-        `${result.collected}건 수집, ${result.newlyMatched}건 신규 매칭 (문서 생성은 23:00 배치에서 처리됩니다)` +
+        `${result.collected}건 수집, ${result.newlyMatched}건 신규 매칭` +
           (result.skillFileWarning ? ` / ⚠ ${result.skillFileWarning}` : "") +
           " / 평점 조회 중..."
       );
       await refreshCurrentView(1);
       setPage(1);
 
-      await runRatingCheckBatch();
-      let running = true;
-      while (running) {
+      // 백엔드가 시작한 평점 조회를 폴링한다. 시작 등록에 약간의 지연이 있을 수 있어
+      // running이 될 때까지 잠시 기다린 뒤(최대 ~12초), 끝날 때까지 대기한다.
+      let started = false;
+      for (let i = 0; i < 300; i++) {
         await new Promise((resolve) => setTimeout(resolve, 3000));
-        ({ running } = await fetchRatingCheckStatus());
+        const { running } = await fetchRatingCheckStatus();
+        if (running) started = true;
+        else if (started || i >= 3) break;
       }
       await refreshCurrentView(1);
       setCollectStatus(
@@ -181,7 +193,11 @@ export function DashboardPage() {
         <>
           <div className="job-grid">
             {displayedItems.map((job) => (
-              <Link key={job.id} to={`/jobs/${job.id}`} className="job-card">
+              <Link
+                key={job.id}
+                to={`/jobs/${job.id}`}
+                className={`job-card${isHighlighted(job) ? " job-card-highlight" : ""}`}
+              >
                 <span className="job-source">{sourceLabel(job.sourceUrl)}</span>
                 <button
                   className={`job-card-favorite${job.isFavorite ? " favorited" : ""}`}

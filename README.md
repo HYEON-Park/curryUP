@@ -11,9 +11,9 @@
 - 공고마다 요구 사항이 달라, 자기소개서를 처음부터 다시 쓰는 데 많은 시간이 소요된다.
 
 **접근 방식**
-1. 크롤러가 매일 00:00 사람인·잡코리아에서 공고를 자동 수집한다.
-2. 경력·기술 스택·희망 직무 등 사용자 프로필과 비교해 맞는 공고만 필터링한다.
-3. 매칭된 공고에 대해 로컬 LLM(Ollama)이 자기소개서·소개·경력사항 초안을 자동 생성한다.
+1. 크롤러가 매일 22:00 사람인·잡코리아에서 공고를 자동 수집한다.
+2. 경력·기술 스택·희망 직무 등 사용자 프로필과 비교해 맞는 공고만 필터링하고, 기업 평점을 조회한다.
+3. 매칭된 공고(신규 고평점·즐겨찾기)에 대해 Claude Code가 자기소개서·소개·경력사항과 매칭표 초안을 자동 작성한다.
 4. 웹 대시보드에서 공고와 생성된 문서를 한 곳에서 확인한다.
 
 ---
@@ -23,11 +23,10 @@
 ### 2.1 사전 요구사항
 
 - Node.js 18+
-- [Ollama](https://ollama.com) 설치 및 모델 준비
+- [Claude Code](https://claude.com/claude-code) CLI — 문서 작성 배치가 headless로 호출한다.
 
-```sh
-ollama pull qwen2.5:14b
-```
+> 이전 버전은 로컬 LLM(Ollama)으로 문서를 생성했으나, 속도·정확도 문제로 Claude Code 배치로 전환했다.
+> Ollama 배치(`aiBatchJob`)는 관리자 페이지의 수동 실행 버튼으로만 남아 있으며 자동 스케줄은 비활성화됐다.
 
 ### 2.2 설치
 
@@ -61,24 +60,27 @@ npm start
 ## 3. 서비스 전체 흐름
 
 ```
-[매일 00:00] 스크래퍼
-  → 사람인 / 잡코리아 공고 수집
-  → 프로필 기반 매칭 필터링 (경력 ±2년, 지역, 기술 스택)
-  → D-0 / D-1 마감 공고 자동 제외
-  → jobPostings.json 저장
-
-[매일 23:00] AI 배치
-  → 문서 미생성 공고 조회
-  → Ollama(qwen2.5:14b)로 자기소개서 / 소개 / 경력사항 생성 (건당 약 4~5분)
+[매일 22:00] 배치 체인 (scrape → ratingCheck → write-documents)
+  ① 스크래퍼
+    → 사람인 / 잡코리아 공고 수집
+    → 프로필 기반 매칭 필터링 (경력 ±2년, 지역, 기술 스택)
+    → D-0 / D-1 마감 공고 자동 제외
+    → jobPostings.json 저장
+  ② 평점 조회
+    → 수집 직후 이어서 기업 평점 갱신
+  ③ 문서 작성 (Claude Code, 조건부)
+    → 문서 미생성 공고 중 신규 고평점(평점 2.8+·매칭률 70%+) 또는 즐겨찾기 공고가 있으면
+    → Claude CLI(headless)를 자동 실행해 자기소개서 / 소개 / 경력사항 / 매칭표 작성
 
 [사용자]
   → 대시보드(/) 에서 공고 카드 확인
-  → 카드 클릭 → 상세 페이지에서 생성된 문서 탭 조회
+  → 카드 클릭 → 상세 페이지에서 생성된 문서 탭 조회 (매칭표·자기소개서·소개·경력사항)
   → 불필요한 공고는 [×] 버튼으로 숨김 처리
   → /admin 에서 숨김 공고 복구 / 영구 삭제 및 배치 수동 실행
 ```
 
-> 스케줄 시각에 서버가 꺼져 있었다면, 다음 기동 시 즉시 catch-up 실행된다.
+> 각 단계는 runLog에 기록되어 관리자 페이지에서 이력을 확인할 수 있다.
+> notify(오전 프로필 알림) 등 스케줄 시각에 서버가 꺼져 있었다면, 다음 기동 시 즉시 catch-up 실행된다.
 
 ---
 
@@ -88,8 +90,9 @@ npm start
 |------|------|
 | `backend/src/scrapers/` | 사람인·잡코리아 스크래퍼. `BaseScraper` 추상 클래스 기반으로 확장 가능 |
 | `backend/src/matching/matchEngine.ts` | 프로필과 공고를 비교해 매칭 여부 판단. 경력(±2년) AND 지역 AND (스킬 OR 직무) |
-| `backend/src/scheduler/` | node-cron 기반 스케줄러. scrape(00:00), notify(08:00), aiBatch(23:00) |
-| `backend/src/ai/` | Ollama HTTP API 호출 및 3종 문서(자소서·소개·경력사항) 생성 조율 |
+| `backend/src/scheduler/` | node-cron 기반 스케줄러. scrape(22:00) → ratingCheck → write-documents 체인, notify(08:00). aiBatch는 자동 스케줄 비활성화(수동만) |
+| `backend/src/scheduler/writeDocumentsJob.ts` | scrape·평점 조회 종료 후 대상 공고가 있으면 Claude CLI(headless)를 실행해 문서 작성 |
+| `backend/src/ai/` | 3종 문서(자소서·소개·경력사항) 생성 조율. 문서 본문 작성은 Claude Code가 담당 |
 | `backend/src/data/store.ts` | JSON 파일 기반 데이터 레이어. 공고·숨김 공고·프로필·실행 이력 관리 |
 | `backend/src/routes/` | Express REST API. `/api/jobs`, `/api/profile`, `/api/admin/*` |
 | `frontend/src/pages/DashboardPage.tsx` | 공고 카드 그리드. 페이지네이션(URL 기반), 숨김 처리 |
@@ -147,8 +150,16 @@ npm start
 {
   "yearsOfExperience": 3,
   "skills": ["TypeScript", "Node.js", "React", "PostgreSQL"],
+  "careerHistory": "3년간 백엔드 API 및 데이터 파이프라인 개발",
+  "certifications": ["정보처리기사"],
   "locations": ["서울 강남구", "서울 서초구"],
-  "desiredRoleCategories": ["백엔드 개발", "풀스택 개발"]
+  "desiredRoleCategories": ["백엔드 개발", "풀스택 개발"],
+  "roleAnswers": {
+    "주로 사용한 데이터베이스는?": "PostgreSQL, Redis",
+    "대규모 트래픽/스케일링 경험이 있나요?": "일 100만 요청 규모 서비스 운영"
+  },
+  "learningStack": "Kubernetes, gRPC",
+  "aiToolUsage": "Claude Code, Copilot 활용한 개발 자동화"
 }
 ```
 
@@ -156,11 +167,14 @@ npm start
 
 ```
 ┌─────────────────────────────┐
-│  ㈜예시컴퍼니              S │
+│  ㈜예시컴퍼니 (4.2)       ★ S │  ← 회사명 옆 괄호: 기업 평점(미조회 시 —)
+│                             │   ← 좌: 출처 / 우: 즐겨찾기(★ 등록·☆ 미등록) 사람인 S / 잡코리아 J
+│  서울 강남구                  │
+│  백엔드 개발자 (Node.js)      │
 │                              │
-│  서울 강남구                 │
-│  백엔드 개발자 (Node.js)     │
-│                              │
-│  D-7                      × │
+│  D-7                      × │  ← 좌: 마감 D-day / 우: 숨김
 └─────────────────────────────┘
 ```
+
+- **★ / ☆** — 즐겨찾기 토글. 즐겨찾기 공고는 평점·매칭률 조건 없이 문서 작성 배치 대상이 된다.
+- **(4.2)** — `ratingCheck` 배치가 조회한 기업 평점. 신규 공고는 평점 2.8 이상일 때만 문서 작성 대상이 된다.

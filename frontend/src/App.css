@@ -239,17 +239,40 @@ button[type="submit"] {
   font-size: 15px;
 }
 
+/* 화면 크기 구간별 고정 열 수. auto-fill로 열 수·카드 폭이 계속 바뀌던 것을 없애고,
+   #root 고정 폭(1126px) 기준 데스크톱 4열(페이지당 12개 = 3행)로 고정한다. */
 .job-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
   padding: 0 16px;
   margin-top: 15px;
 }
 
+@media (max-width: 1024px) {
+  .job-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .job-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .job-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .job-card {
   display: block;
   position: relative;
+  height: 165px;
+  box-sizing: border-box;
+  overflow: hidden;
   padding: 16px;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -266,9 +289,25 @@ button[type="submit"] {
   box-shadow: 0 4px 12px rgba(0, 33, 81, 0.08);
 }
 
+/* 강조: 즐겨찾기 공고 또는 매칭률 종합 70% 이상 */
+.job-card-highlight {
+  border-width: 2px;
+  border-color: var(--gold-strong);
+  box-shadow: 0 0 0 1px var(--gold-strong), 0 2px 8px rgba(0, 33, 81, 0.08);
+}
+
+.job-card-highlight:hover {
+  box-shadow: 0 0 0 1px var(--gold-strong), 0 4px 12px rgba(0, 33, 81, 0.12);
+}
+
 .job-card h3 {
   margin: 0 0 8px;
   font-size: 18px;
+  /* 회사명이 길어도 카드 높이가 늘지 않도록 2줄로 제한 */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .job-rating {
@@ -282,6 +321,11 @@ button[type="submit"] {
   color: var(--text);
   font-size: 14px;
   line-height: 145%;
+  /* 지역+제목이 길어도 하단 D-day와 겹치지 않고 높이 고정되도록 3줄 제한 */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .job-card .dday {
@@ -425,7 +469,9 @@ button[type="submit"] {
   background: var(--bg);
   color: var(--text-h);
   cursor: pointer;
-  margin: 16px 0 8px;
+  display: block;
+  width: fit-content;
+  margin: 16px 0 8px auto;
 }
 
 .source-link {

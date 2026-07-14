@@ -12,7 +12,8 @@ async function ratingCheckTask(): Promise<void> {
   console.log("[ratingCheckJob] rating check:", result);
 }
 
-// 대시보드에서 [UPDATE] 버튼을 누르면 공고 수집 뒤 이어서 즉시 실행되는 수동 배치. 주기적 스케줄링은 없다.
+// 대시보드 [UPDATE] 수동 수집(/collect 라우트가 수집 완료 후 호출) + 매일 scrapeTask 직후에
+// 실행된다. 자체 cron 스케줄은 없고, 항상 수집 흐름에 이어서 수행된다.
 export function runRatingCheckNow(): Promise<RunRecord> {
   return runManualJob(RATING_CHECK_JOB_NAME, ratingCheckTask);
 }

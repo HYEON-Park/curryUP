@@ -9,7 +9,9 @@ import { adminRouter } from "./routes/admin.js";
 import { collectRouter } from "./routes/collect.js";
 import { profileRouter } from "./routes/profile.js";
 import { jobsRouter } from "./routes/jobs.js";
-import { catchUpAiBatchJob, startAiBatchJob } from "./scheduler/aiBatchJob.js";
+// AI 문서 생성은 Ollama 자동 배치 대신 Claude Code가 수동 실행한다 (.claude/skills/write-documents).
+// 관리자 페이지의 수동 실행 버튼(runAiBatchNow)은 유지되므로 필요 시 admin.ts 경유로 실행 가능하다.
+// import { catchUpAiBatchJob, startAiBatchJob } from "./scheduler/aiBatchJob.js";
 import { catchUpNotifyJob, startNotifyJob } from "./scheduler/notifyJob.js";
 import { reconcileInterruptedRuns } from "./scheduler/runLog.js";
 import { startScrapeJob } from "./scheduler/scrapeJob.js";
@@ -39,7 +41,7 @@ await reloadSkillFile("STARTUP");
 
 startScrapeJob();
 startNotifyJob();
-startAiBatchJob();
+// startAiBatchJob(); — Ollama 야간 배치 비활성화 (Claude Code 수동 배치로 대체)
 
 const server = http.createServer(app);
 
@@ -66,9 +68,8 @@ server.listen(PORT, () => {
   // 기동 시점에 오늘·내일 마감 공고를 즉시 정리한다.
   deleteImminentJobPostings().catch((error) => console.error("[deleteImminentJobPostings] failed:", error));
 
-  // AI 배치 catch-up은 건당 4~5분이 걸릴 수 있으므로 서버 기동(listen)을 막지 않고 백그라운드로 실행한다.
   catchUpNotifyJob().catch((error) => console.error("[catchUpNotifyJob] failed:", error));
-  catchUpAiBatchJob().catch((error) => console.error("[catchUpAiBatchJob] failed:", error));
+  // catchUpAiBatchJob() — Ollama 야간 배치 비활성화에 따라 catch-up도 중단
 
   getProfile().then((profile) => {
     if (profile.lastProfileUpdate === null) {

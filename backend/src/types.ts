@@ -38,6 +38,7 @@ export interface GeneratedDocuments {
   coverLetter: string;
   intro: string;
   workExperience: string;
+  matchReport?: string; // 매칭률 사전 평가표 + 지원 권장도 (문서 작성 배치가 생성)
   generatedAt: string;
 }
 

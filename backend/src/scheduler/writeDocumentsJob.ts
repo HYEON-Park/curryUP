@@ -1,0 +1,78 @@
+import { spawn } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { getJobPostings } from "../data/store.js";
+import { runManualJob, type RunRecord } from "./runLog.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = path.resolve(__dirname, "../../..");
+
+export const WRITE_DOCS_JOB_NAME = "write-documents";
+
+// 문서생성 기준(.claude/skills/write-documents/SKILL.md와 동일):
+//   1) 신규 트랙: 오늘 수집 + 평점 2.8 이상 (+ 매칭률 70% 이상 — 매칭률은 Claude가 평가표 작성 시 판단)
+//   2) 즐겨찾기 트랙: isFavorite — 평점·매칭률 조건 없음
+// collectedAt의 날짜 비교는 deleteTodaysJobPostings()와 동일하게 ISO(UTC) 날짜 문자열 기준을 따른다.
+const MIN_RATING = 2.8;
+
+async function countTargets(): Promise<number> {
+  const jobs = await getJobPostings();
+  const todayKey = new Date().toISOString().slice(0, 10);
+  return jobs.filter((j) => {
+    if (j.documents) return false;
+    if (j.isFavorite === true) return true;
+    const rating = j.rating ? parseFloat(j.rating) : NaN;
+    return j.collectedAt.slice(0, 10) === todayKey && rating >= MIN_RATING;
+  }).length;
+}
+
+// Claude Code CLI를 headless로 실행해 write-documents 스킬 절차대로 문서를 작성하게 한다.
+// 프롬프트는 셸 이스케이프 문제를 피하기 위해 stdin으로 전달한다.
+function runClaudeWriteDocuments(): Promise<void> {
+  const prompt = [
+    "write-documents 문서 작성 배치를 실행해줘.",
+    ".claude/skills/write-documents/SKILL.md의 프롬프트 체계와 실행 절차를 그대로 따라.",
+    "문서생성 기준(SKILL.md와 동일): documents가 null인 공고 중",
+    "(1) 오늘 수집 + 평점 2.8 이상 + 매칭률 사전 평가 70% 이상인 공고 — 70% 미만이면 작성 생략하고 사유 보고,",
+    "(2) 즐겨찾기(isFavorite) 공고 — 조건 없이 작성.",
+    "연차 필터(프로필 ±2 초과 제외·삭제 후보 보고) 등 나머지 규칙도 SKILL.md대로 적용해.",
+    "Bash 도구는 사용하지 말고 Read/Edit/Write 도구만으로 jobPostings.json을 수정해.",
+    "서버 재시작·git 작업은 하지 마. 완료 후 작성/생략 건수와 회사 목록을 보고해.",
+  ].join("\n");
+
+  return new Promise((resolve, reject) => {
+    const child = spawn("claude", ["-p", "--permission-mode", "acceptEdits"], {
+      cwd: REPO_ROOT,
+      shell: true, // Windows에서 claude.cmd 해석을 위해 필요
+      env: process.env,
+    });
+
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (d) => (stdout += d));
+    child.stderr.on("data", (d) => (stderr += d));
+
+    child.on("error", reject);
+    child.on("close", (code) => {
+      // 결과 요약은 서버 로그로 남긴다 (관리자 페이지 이력은 runLog가 담당).
+      console.log("[writeDocumentsJob] claude 결과:", stdout.slice(-2000));
+      if (code === 0) resolve();
+      else reject(new Error(`claude CLI 종료 코드 ${code}: ${stderr.slice(-500)}`));
+    });
+
+    child.stdin.write(prompt, "utf-8");
+    child.stdin.end();
+  });
+}
+
+// scrape → ratingCheck 이후 무조건 호출된다. 작성 대상이 있으면 반드시 실행하고,
+// 대상이 없으면 실행 이력을 남기지 않고 건너뛴다.
+export async function runWriteDocumentsIfNeeded(): Promise<RunRecord | null> {
+  const targetCount = await countTargets();
+  if (targetCount === 0) {
+    console.log("[writeDocumentsJob] 작성 대상 없음 — 건너뜀");
+    return null;
+  }
+  console.log(`[writeDocumentsJob] 작성 대상 ${targetCount}건 — Claude 문서 작성 배치 시작`);
+  return runManualJob(WRITE_DOCS_JOB_NAME, runClaudeWriteDocuments);
+}

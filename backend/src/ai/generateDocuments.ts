@@ -10,11 +10,11 @@ export async function generateDocumentsForPosting(
 ): Promise<GeneratedDocuments> {
   const companyResearch = await researchCompany(posting.company);
 
-  const [coverLetter, intro, workExperience] = await Promise.all([
-    generateCoverLetter(profile, posting, companyResearch),
-    generateIntro(profile, posting, companyResearch),
-    generateWorkExperience(profile, posting),
-  ]);
+  // CPU-only 로컬 추론이라 동시에 여러 요청을 돌리면 자원 경합으로 응답이
+  // 급격히 느려져 타임아웃이 잦다. 순차 실행으로 안정성을 우선한다.
+  const coverLetter = await generateCoverLetter(profile, posting, companyResearch);
+  const intro = await generateIntro(profile, posting, companyResearch);
+  const workExperience = await generateWorkExperience(profile, posting);
 
   return { coverLetter, intro, workExperience, generatedAt: new Date().toISOString() };
 }
