@@ -24,8 +24,8 @@ Get-WmiObject Win32_Process | Where-Object {
   ($_.CommandLine -like "*tsx*" -and $_.CommandLine -like "*R\\backend*")
 } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 
-# 하나만 기동
-cd C:\R\backend; npx tsx src/server.ts
+# 하나만 기동 (node --import tsx: 단일 프로세스로 기동)
+cd C:\R\backend; node --import tsx src/server.ts
 ```
 
 ## 작업 범위

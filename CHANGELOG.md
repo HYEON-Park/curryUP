@@ -1,6 +1,32 @@
 # CHANGELOG
 
-프로젝트 주요 변경 이력. 최신이 위.
+프로젝트 주요 변경 이력. 최신이 위. 각 항목에는 수정한 소스 파일명을 함께 기록한다.
+
+## 2026-07-14
+
+### 대시보드 정렬·강조 및 고정 그리드 (커밋 dd59d6a)
+- 즐겨찾기·매칭률 70% 이상 공고를 대시보드 상단으로 정렬, 해당 카드는 굵은 테두리로 강조
+- 공고 그리드를 브레이크포인트별 고정 컬럼 수 + 고정 카드 높이로 변경
+- 파일: `frontend/src/pages/DashboardPage.tsx`, `frontend/src/App.css`, `frontend/src/utils/matchReport.ts`, `frontend/src/pages/AdminBatchPage.tsx`
+
+### 평점조회 배치 백엔드 체이닝 (커밋 dd59d6a)
+- `/collect` 이후 평점조회를 백엔드에서 이어서 실행 — 브라우저 탭 새로고침·이동과 무관하게 항상 실행 (기존엔 브라우저 상태에 의존해 유실됨)
+- writeDocumentsJob(Claude CLI)을 scrape+평점조회 뒤에 실행, scrape는 22:00로 이동
+- Ollama 야간 AI 배치 비활성화, generateDocuments는 순차 실행
+- `documents`에 `matchReport` 필드 추가
+- 파일: `backend/src/routes/collect.ts`, `backend/src/routes/jobs.ts`, `backend/src/scheduler/ratingCheckJob.ts`, `backend/src/scheduler/scrapeJob.ts`, `backend/src/scheduler/writeDocumentsJob.ts`, `backend/src/ai/generateDocuments.ts`, `backend/src/server.ts`, `backend/src/types.ts`
+
+### curryUP 브랜딩 (커밋 dd59d6a)
+- 탭 타이틀 curryUP, 파비콘 `favicon-curryup.png` 적용
+- 셋업 스크립트 정리: 사용하지 않는 `setup.bat`/`setup.ps1` 제거, README 갱신
+- 파일: `frontend/index.html`, `frontend/public/favicon-curryup.png`, `README.md`, `backend/scripts/setup.bat`(삭제), `backend/scripts/setup.ps1`(삭제)
+
+## 2026-07-13
+
+### 매칭표(matchReport) 막대 차트 렌더링 (커밋 f3c6b59)
+- `매칭률 사전 평가` 표를 파싱해 라벨 막대 차트로 표시 (등급→%·색상 매핑, 범위 등급은 평균, `-`는 신호 없음 처리)
+- 공고 상세 진입 시 문서 탭 중 첫 번째(matchReport 우선)를 자동으로 연다
+- 파일: `frontend/src/components/MatchReport.tsx`(신설), `frontend/src/pages/JobDetailPage.tsx`, `frontend/src/App.css`, `frontend/src/types.ts`
 
 ## 2026-07-09
 
