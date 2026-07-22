@@ -270,9 +270,10 @@ button[type="submit"] {
 .job-card {
   display: block;
   position: relative;
-  height: 165px;
+  height: 180px;
   box-sizing: border-box;
   overflow: hidden;
+  min-width: 0;
   padding: 16px;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -302,12 +303,18 @@ button[type="submit"] {
 
 .job-card h3 {
   margin: 0 0 8px;
+  /* 우상단 배지(job-source right:16 · job-card-favorite right:44, 각 22px)를 회사명이
+     침범하지 않도록 오른쪽 여백 확보 (배지 왼쪽 끝 ≈ 카드 우측에서 66px) */
+  padding-right: 56px;
   font-size: 18px;
-  /* 회사명이 길어도 카드 높이가 늘지 않도록 2줄로 제한 */
+  /* 회사명이 길어도 카드 높이가 늘지 않도록 2줄로 제한하고, 넘치면 말줄임표(…) 처리 */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  /* 공백 없는 긴 회사명/토큰이 가로로 삐져나가지 않고 줄바꿈되도록 */
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .job-rating {
@@ -321,11 +328,14 @@ button[type="submit"] {
   color: var(--text);
   font-size: 14px;
   line-height: 145%;
-  /* 지역+제목이 길어도 하단 D-day와 겹치지 않고 높이 고정되도록 3줄 제한 */
+  /* 지역+제목이 길어도 하단 D-day와 겹치지 않고 높이 고정되도록 3줄 제한 + 넘치면 말줄임표(…) */
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  /* 공백 없는 긴 공고명이 가로로 삐져나가 grid를 밀지 않도록 강제 줄바꿈 */
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .job-card .dday {

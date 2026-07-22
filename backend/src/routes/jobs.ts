@@ -14,6 +14,7 @@ function matchOverall(text: string | null | undefined): number | null {
 }
 
 // 대시보드 카드 강조 조건과 동일(프런트 isHighlighted): 즐겨찾기이거나 매칭률 종합 70% 이상.
+// 매칭률은 documents.matchReport 한 곳에만 쌓인다(매칭률 조회 배치·문서 작성 배치 공통).
 // 상단 고정 우선순위: 즐겨찾기(0) > 매칭률 70%+(1) > 일반(2). 낮을수록 위로.
 function priorityRank(job: JobPosting): number {
   if (job.isFavorite === true) return 0;

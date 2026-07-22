@@ -37,9 +37,6 @@ export interface JobPosting {
   isFavorite?: boolean;
   rating?: string | null;
   ratingUpdatedAt?: string | null;
-  // 매칭률 조회 배치가 채우는 매칭률 평가표. documents.matchReport가 있으면 그쪽이 우선.
-  matchReport?: string;
-  matchReportAt?: string | null;
 }
 
 export interface HiddenJobPosting extends JobPosting {

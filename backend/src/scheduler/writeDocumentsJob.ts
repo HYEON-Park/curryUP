@@ -15,11 +15,18 @@ export const WRITE_DOCS_JOB_NAME = "write-documents";
 // collectedAt의 날짜 비교는 deleteTodaysJobPostings()와 동일하게 ISO(UTC) 날짜 문자열 기준을 따른다.
 const MIN_RATING = 2.8;
 
+// "이미 처리됨" 판정은 documents 객체 존재가 아니라 자소서(coverLetter) 작성 여부로 한다.
+// 매칭률 조회 배치가 documents.matchReport만 먼저 채워 documents가 생겼더라도, coverLetter가 비어 있으면
+// 아직 자소서 미작성이므로 문서 작성 대상에 포함해야 한다(그래야 매칭률만 있는 공고도 자소서를 받는다).
+function hasCoverLetter(j: { documents: { coverLetter?: string } | null }): boolean {
+  return Boolean(j.documents?.coverLetter);
+}
+
 async function countTargets(): Promise<number> {
   const jobs = await getJobPostings();
   const todayKey = new Date().toISOString().slice(0, 10);
   return jobs.filter((j) => {
-    if (j.documents) return false;
+    if (hasCoverLetter(j)) return false;
     if (j.isFavorite === true) return true;
     const rating = j.rating ? parseFloat(j.rating) : NaN;
     return j.collectedAt.slice(0, 10) === todayKey && rating >= MIN_RATING;
@@ -32,9 +39,11 @@ function runClaudeWriteDocuments(): Promise<void> {
   const prompt = [
     "write-documents 문서 작성 배치를 실행해줘.",
     ".claude/skills/write-documents/SKILL.md의 프롬프트 체계와 실행 절차를 그대로 따라.",
-    "문서생성 기준(SKILL.md와 동일): documents가 null인 공고 중",
+    "문서생성 기준(SKILL.md와 동일): 아직 자소서가 없는 공고(documents가 null이거나, documents는 있어도 coverLetter가 빈 문자열/없음) 중",
     "(1) 오늘 수집 + 평점 2.8 이상 + 매칭률 사전 평가 70% 이상인 공고 — 70% 미만이면 작성 생략하고 사유 보고,",
     "(2) 즐겨찾기(isFavorite) 공고 — 조건 없이 작성.",
+    "이미 documents.matchReport가 있으면(매칭률 조회 배치가 먼저 작성한 것) 그 매칭률을 재사용해 70% 판정에 쓰고 matchReport는 다시 만들지 마. coverLetter·intro·workExperience만 새로 채워 병합해.",
+    "documents.matchReport가 없으면 매칭률 평가표부터 새로 작성해 함께 저장해.",
     "연차 필터(프로필 ±2 초과 제외·삭제 후보 보고) 등 나머지 규칙도 SKILL.md대로 적용해.",
     "Bash 도구는 사용하지 말고 Read/Edit/Write 도구만으로 jobPostings.json을 수정해.",
     "서버 재시작·git 작업은 하지 마. 완료 후 작성/생략 건수와 회사 목록을 보고해.",

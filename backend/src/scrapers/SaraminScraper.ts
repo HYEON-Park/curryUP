@@ -1,6 +1,7 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
 import type { JobPosting } from "../types.js";
+import { resolveDeadlineYear } from "../utils/deadline.js";
 import type { Scraper } from "./BaseScraper.js";
 
 const BASE_URL = "https://www.saramin.co.kr";
@@ -57,7 +58,10 @@ function parsePage(
     if (!title || !href) return;
 
     const company = item.find(".corp_name a").first().text().trim();
-    const deadline = item.find(".job_date .date").first().text().trim() || null;
+    // 사람인은 "~ 07/19(금)"처럼 연도 없이 내려주므로, 수집 시점 기준으로 연도를 붙여
+    // "~ 2026/07/19(금)" 형식으로 저장한다(상시채용·채용시 등 날짜 아닌 표기는 그대로 유지).
+    const rawDeadline = item.find(".job_date .date").first().text().trim() || null;
+    const deadline = resolveDeadlineYear(rawDeadline, new Date());
 
     const conditionSpans = item.find(".job_condition > span");
     const location = conditionSpans

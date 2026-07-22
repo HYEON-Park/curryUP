@@ -3,7 +3,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import { fetchJobDetail } from "../api/client";
 import { MatchReport } from "../components/MatchReport";
 import type { JobPosting } from "../types";
-import { resolveMatchReport } from "../utils/matchReport";
 
 const DOC_TABS = ["matchReport", "coverLetter", "intro", "workExperience"] as const;
 type DocTab = (typeof DOC_TABS)[number];
@@ -20,10 +19,9 @@ const TAB_LABELS: Record<Tab, string> = {
 
 // 진입 시 열 탭 + 탭 버튼 순서. 문서 탭 우선(매칭표가 먼저), 공고는 맨 뒤.
 function getAvailableTabs(job: JobPosting): Tab[] {
-  // 매칭표는 매칭률 조회 배치가 채운 top-level matchReport만 있어도 노출한다(전체 문서 작성 전 미리보기).
-  const docTabs = DOC_TABS.filter((tab) =>
-    tab === "matchReport" ? Boolean(resolveMatchReport(job)) : job.documents?.[tab]
-  );
+  // 내용이 있는 문서 탭만 노출한다. 매칭률 조회 배치가 매칭표만 채운 공고는 나머지 문서 필드가
+  // 빈 문자열이라 매칭표 탭만 뜬다.
+  const docTabs = DOC_TABS.filter((tab) => job.documents?.[tab]);
   return [...docTabs, ...(job.postingBody ? (["posting"] as const) : [])];
 }
 
@@ -73,7 +71,7 @@ export function JobDetailPage() {
             ))}
           </div>
           {activeTab === "matchReport" ? (
-            <MatchReport text={resolveMatchReport(job) ?? ""} />
+            <MatchReport text={job.documents?.matchReport ?? ""} />
           ) : activeTab === "posting" ? (
             <pre className="doc-content">{job.postingBody}</pre>
           ) : (

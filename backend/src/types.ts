@@ -33,17 +33,13 @@ export interface JobPosting {
   isFavorite?: boolean;
   rating?: string | null;
   ratingUpdatedAt?: string | null;
-  // 매칭률 조회 배치가 생성하는 매칭률 사전 평가표(§6-1/6-2). 전체 문서 작성 배치와 독립적으로 채워지며,
-  // documents.matchReport가 있으면 그쪽이 우선한다(전체 문서 작성 시 최신 평가로 갱신되므로).
-  matchReport?: string;
-  matchReportAt?: string | null;
 }
 
 export interface GeneratedDocuments {
   coverLetter: string;
   intro: string;
   workExperience: string;
-  matchReport?: string; // 매칭률 사전 평가표 + 지원 권장도 (문서 작성 배치가 생성)
+  matchReport?: string; // 매칭률 사전 평가표 + 지원 권장도 (매칭률 조회 배치 또는 문서 작성 배치가 생성)
   generatedAt: string;
 }
 

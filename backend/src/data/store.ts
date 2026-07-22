@@ -146,23 +146,11 @@ export async function deleteImminentJobPostings(): Promise<void> {
   }
 }
 
-// deadline 표기("~ 07/05(일)")는 연도가 없어, 수집 시점(collectedAt)을 기준으로 가장
-// 가까운 미래로 연도를 보정한 뒤 실제 마감일을 구한다. "상시채용"/null처럼 날짜가
-// 없는 공고는 마감 기준이 없으므로 만료 대상에서 제외한다.
-function isPastDeadline(job: JobPosting, now: Date): boolean {
-  if (!job.deadline) return false;
-  const match = job.deadline.match(/(\d{1,2})\/(\d{1,2})/);
-  if (!match) return false;
-
-  const month = Number(match[1]);
-  const day = Number(match[2]);
-  const collected = new Date(job.collectedAt);
-  collected.setHours(0, 0, 0, 0);
-
-  let resolvedDeadline = new Date(collected.getFullYear(), month - 1, day);
-  if (resolvedDeadline < collected) resolvedDeadline = new Date(collected.getFullYear() + 1, month - 1, day);
-
-  return resolvedDeadline < now;
+// 마감일 판정은 daysUntilDeadline 한 곳으로 통일한다(연도 포함 표기를 그대로 신뢰).
+// "상시채용"/null처럼 날짜가 없는 공고는 daysUntilDeadline이 null을 주므로 만료 대상에서 제외된다.
+function isPastDeadline(job: JobPosting): boolean {
+  const days = daysUntilDeadline(job.deadline);
+  return days !== null && days < 0;
 }
 
 // 데일리 배치: D-day(마감일)가 지난 공고는 더 이상 지원 대상이 아니므로 정리한다.
@@ -177,8 +165,6 @@ export async function toggleFavorite(id: string): Promise<boolean | null> {
 
 export async function deleteExpiredJobPostings(): Promise<void> {
   const jobs = await getJobPostings();
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  const remaining = jobs.filter((job) => !isPastDeadline(job, now));
+  const remaining = jobs.filter((job) => !isPastDeadline(job));
   await saveJobPostings(remaining);
 }

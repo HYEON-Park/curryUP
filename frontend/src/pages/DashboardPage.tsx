@@ -11,7 +11,7 @@ import {
 } from "../api/client";
 import type { JobPosting } from "../types";
 import { formatDday } from "../utils/dday";
-import { parseMatchOverall, resolveMatchReport } from "../utils/matchReport";
+import { parseMatchOverall } from "../utils/matchReport";
 
 function sourceLabel(sourceUrl: string): string {
   if (sourceUrl.includes("jobkorea.co.kr")) return "J";
@@ -22,7 +22,7 @@ function sourceLabel(sourceUrl: string): string {
 // 강조 조건: 즐겨찾기 공고이거나, 매칭률 종합 70% 이상.
 function isHighlighted(job: JobPosting): boolean {
   if (job.isFavorite === true) return true;
-  const overall = parseMatchOverall(resolveMatchReport(job));
+  const overall = parseMatchOverall(job.documents?.matchReport);
   return overall !== null && overall >= 70;
 }
 

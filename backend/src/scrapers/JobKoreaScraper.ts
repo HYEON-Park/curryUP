@@ -90,24 +90,26 @@ function extractDetailSkills(rscText: string): string[] {
   return [...new Set([...tagged, ...keywordHits])];
 }
 
-// 사람인 쪽 deadline 표기("~ 06/26(금)")와 맞춰 프론트엔드 D-day 계산(dday.ts)이
-// 그대로 동작하도록 같은 형식으로 변환한다.
+// deadline은 연도 포함 형식("~ 2026/06/26(금)")으로 저장한다. endDate에 실제 연도가 있으므로
+// 그대로 사용한다(연도를 붙여야 D-day 계산이 과거를 내년으로 밀지 않는다).
 function extractDeadline(rscText: string): string | null {
   const match = rscText.match(/"endDate":"(\d{4})\.(\d{2})\.(\d{2})\(([^)]+)\)[^"]*"/);
   if (!match) return null;
   const [, year, month, day, weekday] = match;
   // 상시채용 공고는 실제 마감일 대신 2070년 같은 먼 미래 날짜를 내려준다.
   if (Number(year) > new Date().getFullYear() + 3) return "상시채용";
-  return `~ ${month}/${day}(${weekday})`;
+  return `~ ${year}/${month}/${day}(${weekday})`;
 }
 
 const RESPONSIBILITIES_MAX_LENGTH = 2000;
+// '공고' 탭에 원문 전체를 보여주기 위한 별도 컷. responsibilities(매칭·문서 배치용 요약)보다 길게 잡는다.
+const POSTING_BODY_MAX_LENGTH = 8000;
 
 // 회사마다 공고 본문 템플릿(일반 단락, 카드형, 표 기반 등)이 전부 달라서 "담당업무"
 // 같은 특정 제목 태그를 정규식으로 찾는 방식은 회사별로 깨진다. 대신 RSC 조각 중
 // 한글 비중이 높고 HTML 태그를 포함한(=실제 본문이 들어있는) 조각을 찾아 태그만
-// 벗겨내면 템플릿과 무관하게 본문 텍스트를 얻을 수 있다.
-function extractResponsibilities(html: string): string | null {
+// 벗겨내면 템플릿과 무관하게 본문 텍스트를 얻을 수 있다. 길이 제한 없이 반환한다.
+function extractBodyText(html: string): string | null {
   const pushRe = /self\.__next_f\.push\(\[1,"((?:[^"\\]|\\.)*)"\]\)/g;
   let match: RegExpExecArray | null;
   let bestChunk = "";
@@ -139,12 +141,12 @@ function extractResponsibilities(html: string): string | null {
     .filter(Boolean)
     .join("\n");
 
-  return text.slice(0, RESPONSIBILITIES_MAX_LENGTH) || null;
+  return text || null;
 }
 
 async function fetchDetail(
   gno: string
-): Promise<{ skills: string[]; deadline: string | null; responsibilities: string | null } | null> {
+): Promise<{ skills: string[]; deadline: string | null; responsibilities: string | null; postingBody: string | null } | null> {
   try {
     const response = await axios.get<string>(`${BASE_URL}/Recruit/GI_Read_Comt_Ifrm`, {
       params: { Gno: gno, isHiringCenter: "false", hideMapView: "false" },
@@ -152,10 +154,12 @@ async function fetchDetail(
       timeout: 15000,
     });
     const rscText = extractRscText(response.data);
+    const body = extractBodyText(response.data);
     return {
       skills: extractDetailSkills(rscText),
       deadline: extractDeadline(rscText),
-      responsibilities: extractResponsibilities(response.data),
+      responsibilities: body ? body.slice(0, RESPONSIBILITIES_MAX_LENGTH) : null,
+      postingBody: body ? body.slice(0, POSTING_BODY_MAX_LENGTH) : null,
     };
   } catch (error) {
     console.warn(`[JobKoreaScraper] detail fetch failed for Gno=${gno}:`, error);
@@ -273,6 +277,9 @@ export const JobKoreaScraper: Scraper = {
         }
         if (detail.responsibilities) {
           posting.responsibilities = detail.responsibilities;
+        }
+        if (detail.postingBody) {
+          posting.postingBody = detail.postingBody;
         }
       }
       await sleep(250);
