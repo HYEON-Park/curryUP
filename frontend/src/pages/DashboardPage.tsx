@@ -4,13 +4,14 @@ import {
   deleteJob,
   fetchAllJobs,
   fetchJobs,
+  fetchMatchCheckStatus,
   fetchRatingCheckStatus,
   toggleFavorite,
   triggerCollect,
 } from "../api/client";
 import type { JobPosting } from "../types";
 import { formatDday } from "../utils/dday";
-import { parseMatchOverall } from "../utils/matchReport";
+import { parseMatchOverall, resolveMatchReport } from "../utils/matchReport";
 
 function sourceLabel(sourceUrl: string): string {
   if (sourceUrl.includes("jobkorea.co.kr")) return "J";
@@ -21,7 +22,7 @@ function sourceLabel(sourceUrl: string): string {
 // 강조 조건: 즐겨찾기 공고이거나, 매칭률 종합 70% 이상.
 function isHighlighted(job: JobPosting): boolean {
   if (job.isFavorite === true) return true;
-  const overall = parseMatchOverall(job.documents?.matchReport);
+  const overall = parseMatchOverall(resolveMatchReport(job));
   return overall !== null && overall >= 70;
 }
 
@@ -80,37 +81,42 @@ export function DashboardPage() {
     }
   }
 
-  // UPDATE 버튼: 공고를 수동 수집한다. 수집 완료 직후 평점 조회 배치는 백엔드(/collect)가
-  // 이어서 자동 실행하므로 여기서 따로 트리거하지 않는다(수집 중 탭 이탈로 평점 조회가
-  // 누락되던 문제를 막기 위해 서버 측으로 옮겼다). 두 배치는 관리자 배치 로그에 각각
-  // collect / 평점조회로 기록되며, 여기서는 완료를 폴링해 화면만 갱신한다.
+  // 백엔드가 시작한 후속 배치를 폴링한다. 시작 등록에 약간의 지연이 있을 수 있어
+  // running이 될 때까지 잠시 기다린 뒤(최대 ~12초), 끝날 때까지 대기한다.
+  // 대상이 없어 배치가 아예 시작되지 않으면 초반 몇 회 폴링 후 조용히 빠져나온다.
+  async function waitForBatch(pollStatus: () => Promise<{ running: boolean }>) {
+    let started = false;
+    for (let i = 0; i < 300; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      const { running } = await pollStatus();
+      if (running) started = true;
+      else if (started || i >= 3) break;
+    }
+  }
+
+  // UPDATE 버튼: 공고를 수동 수집한다. 수집 완료 직후 백엔드(/collect)가 평점 조회 → 매칭률 조회
+  // 배치를 순서대로 이어서 자동 실행하므로 여기서 따로 트리거하지 않는다(수집 중 탭 이탈로 후속
+  // 배치가 누락되던 문제를 막기 위해 서버 측으로 옮겼다). 세 배치는 관리자 배치 로그에 각각
+  // collect / 평점조회 / 매칭률조회로 기록되며, 여기서는 완료를 순서대로 폴링해 화면만 갱신한다.
   async function handleCollect() {
     setCollecting(true);
     setCollectStatus("수집 중...");
     try {
       const result = await triggerCollect();
-      setCollectStatus(
+      const base =
         `${result.collected}건 수집, ${result.newlyMatched}건 신규 매칭` +
-          (result.skillFileWarning ? ` / ⚠ ${result.skillFileWarning}` : "") +
-          " / 평점 조회 중..."
-      );
+        (result.skillFileWarning ? ` / ⚠ ${result.skillFileWarning}` : "");
+      setCollectStatus(`${base} / 평점 조회 중...`);
       await refreshCurrentView(1);
       setPage(1);
 
-      // 백엔드가 시작한 평점 조회를 폴링한다. 시작 등록에 약간의 지연이 있을 수 있어
-      // running이 될 때까지 잠시 기다린 뒤(최대 ~12초), 끝날 때까지 대기한다.
-      let started = false;
-      for (let i = 0; i < 300; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 3000));
-        const { running } = await fetchRatingCheckStatus();
-        if (running) started = true;
-        else if (started || i >= 3) break;
-      }
+      await waitForBatch(fetchRatingCheckStatus);
       await refreshCurrentView(1);
-      setCollectStatus(
-        `${result.collected}건 수집, ${result.newlyMatched}건 신규 매칭, 평점 조회 완료` +
-          (result.skillFileWarning ? ` / ⚠ ${result.skillFileWarning}` : "")
-      );
+      setCollectStatus(`${base}, 평점 조회 완료 / 매칭률 조회 중...`);
+
+      await waitForBatch(fetchMatchCheckStatus);
+      await refreshCurrentView(1);
+      setCollectStatus(`${base}, 평점 조회 완료, 매칭률 조회 완료`);
     } catch {
       setCollectStatus("수집 실패");
     } finally {

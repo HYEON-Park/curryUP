@@ -6,8 +6,9 @@ import {
   purgeAllHiddenJobs,
   purgeSelectedHiddenJobs,
   restoreHiddenJob,
-  runAiBatch,
+  runMatchCheckBatch,
   runNotifyBatch,
+  runWriteDocsBatch,
   runScrapeBatch,
   toggleFavorite,
 } from "../api/client";
@@ -19,6 +20,7 @@ const JOB_LABELS: Record<string, string> = {
   notify: "오전 프로필 알림 배치",
   aiBatch: "야간 AI 문서 생성 배치",
   평점조회: "평점 조회 배치",
+  매칭률조회: "매칭률 조회 배치 (Claude)",
   "write-documents": "문서 작성 배치 (Claude)",
 };
 
@@ -386,20 +388,39 @@ function BatchMonitoringTab() {
         </div>
 
         <div className="admin-control-row">
-          <span>{JOB_LABELS.aiBatch}</span>
+          <span>{JOB_LABELS.매칭률조회}</span>
           <div className="admin-control-actions">
             <button
               disabled={pending !== null}
               onClick={() =>
                 handleAction(
-                  "aiBatch",
-                  "PENDING 초기화 후 즉시 추론",
-                  runAiBatch,
-                  "추론 시작됨 (아래 표에서 진행 상황 확인)"
+                  "match-check",
+                  "매칭률 조회 배치 실행",
+                  runMatchCheckBatch,
+                  "매칭률 조회 시작됨 (아래 표에서 진행 상황 확인)"
                 )
               }
             >
-              PENDING 초기화 후 즉시 추론
+              지금 매칭률 조회 (Claude)
+            </button>
+          </div>
+        </div>
+
+        <div className="admin-control-row">
+          <span>{JOB_LABELS["write-documents"]}</span>
+          <div className="admin-control-actions">
+            <button
+              disabled={pending !== null}
+              onClick={() =>
+                handleAction(
+                  "write-documents",
+                  "문서 작성 배치 실행",
+                  runWriteDocsBatch,
+                  "문서 작성 시작됨 (아래 표에서 진행 상황 확인)"
+                )
+              }
+            >
+              지금 문서 작성 (Claude)
             </button>
           </div>
         </div>

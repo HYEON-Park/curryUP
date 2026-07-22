@@ -56,9 +56,9 @@ export async function runNotifyBatch(): Promise<RunRecord> {
   return res.json();
 }
 
-export async function runAiBatch(): Promise<{ started: boolean }> {
+export async function runWriteDocsBatch(): Promise<{ started: boolean }> {
   const res = await fetch(`${BASE_URL}/admin/ai/run`, { method: "POST" });
-  if (!res.ok) throw new Error("AI 배치 실행에 실패했습니다.");
+  if (!res.ok) throw new Error("문서 작성 배치 실행에 실패했습니다.");
   return res.json();
 }
 
@@ -70,6 +70,17 @@ export async function runRatingCheckBatch(): Promise<{ started: boolean }> {
 
 export async function fetchRatingCheckStatus(): Promise<{ running: boolean }> {
   const res = await fetch(`${BASE_URL}/admin/rating-check/status`);
+  return res.json();
+}
+
+export async function runMatchCheckBatch(): Promise<{ started: boolean }> {
+  const res = await fetch(`${BASE_URL}/admin/match-check/run`, { method: "POST" });
+  if (!res.ok) throw new Error("매칭률 조회 실행에 실패했습니다.");
+  return res.json();
+}
+
+export async function fetchMatchCheckStatus(): Promise<{ running: boolean }> {
+  const res = await fetch(`${BASE_URL}/admin/match-check/status`);
   return res.json();
 }
 

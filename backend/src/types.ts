@@ -27,11 +27,16 @@ export interface JobPosting {
   collectedAt: string;
   documents: GeneratedDocuments | null;
   responsibilities?: string;         // ← 추가 권장 (담당업무 원문)
+  postingBody?: string;              // 모집공고 본문 원문(플레인 텍스트). 현재 잡코리아 신규 수집분만 채운다.
   essayQuestions?: string[];         // ← 추가 권장 (자소서 문항)
   charLimit?: string;                // ← 추가 권장 (글자수 제한)
   isFavorite?: boolean;
   rating?: string | null;
   ratingUpdatedAt?: string | null;
+  // 매칭률 조회 배치가 생성하는 매칭률 사전 평가표(§6-1/6-2). 전체 문서 작성 배치와 독립적으로 채워지며,
+  // documents.matchReport가 있으면 그쪽이 우선한다(전체 문서 작성 시 최신 평가로 갱신되므로).
+  matchReport?: string;
+  matchReportAt?: string | null;
 }
 
 export interface GeneratedDocuments {

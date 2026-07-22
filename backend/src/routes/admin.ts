@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { getHiddenJobs, getJobPostings, permanentDeleteAllHiddenJobs, permanentDeleteHiddenJobs, restoreJob } from "../data/store.js";
-import { runAiBatchNow } from "../scheduler/aiBatchJob.js";
+import { MATCH_CHECK_JOB_NAME, runMatchCheckIfNeeded } from "../scheduler/matchCheckJob.js";
 import { runNotifyNow } from "../scheduler/notifyJob.js";
 import { RATING_CHECK_JOB_NAME, runRatingCheckNow } from "../scheduler/ratingCheckJob.js";
 import { getRunHistory, isJobRunning } from "../scheduler/runLog.js";
 import { runScrapeNow } from "../scheduler/scrapeJob.js";
+import { runWriteDocumentsIfNeeded, WRITE_DOCS_JOB_NAME } from "../scheduler/writeDocumentsJob.js";
 
 export const adminRouter = Router();
 
@@ -23,14 +24,14 @@ adminRouter.post("/notify/run", async (_req, res) => {
 });
 
 adminRouter.get("/ai/status", async (_req, res) => {
-  const running = await isJobRunning("aiBatch");
+  const running = await isJobRunning(WRITE_DOCS_JOB_NAME);
   res.json({ running });
 });
 
-// 건당 4~5분, 최대 몇 시간 걸릴 수 있어 응답을 기다리지 않고 즉시 시작만 알린다.
-// 진행 상황은 GET /runs 폴링으로 확인한다.
+// Claude Code 문서 작성 배치는 수 분 걸릴 수 있어 응답을 기다리지 않고 즉시 시작만 알린다.
+// 작성 대상이 없으면 runWriteDocumentsIfNeeded가 실행 이력 없이 건너뛴다. 진행 상황은 GET /runs 폴링으로 확인한다.
 adminRouter.post("/ai/run", (_req, res) => {
-  runAiBatchNow().catch((error) => console.error("[admin] AI batch failed:", error));
+  runWriteDocumentsIfNeeded().catch((error) => console.error("[admin] write-documents batch failed:", error));
   res.status(202).json({ started: true });
 });
 
@@ -42,6 +43,18 @@ adminRouter.get("/rating-check/status", async (_req, res) => {
 // 회사 수만큼 순차 크롤링이라 몇 분 걸릴 수 있어 응답을 기다리지 않고 즉시 시작만 알린다.
 adminRouter.post("/rating-check/run", (_req, res) => {
   runRatingCheckNow().catch((error) => console.error("[admin] rating check batch failed:", error));
+  res.status(202).json({ started: true });
+});
+
+adminRouter.get("/match-check/status", async (_req, res) => {
+  const running = await isJobRunning(MATCH_CHECK_JOB_NAME);
+  res.json({ running });
+});
+
+// 당일 수집분의 매칭률 평가표를 Claude가 작성하는 배치. 수 분 걸릴 수 있어 시작만 알린다.
+// 대상이 없으면 실행 이력 없이 건너뛴다(started:false). 진행 상황은 GET /runs 폴링으로 확인한다.
+adminRouter.post("/match-check/run", (_req, res) => {
+  runMatchCheckIfNeeded().catch((error) => console.error("[admin] match check batch failed:", error));
   res.status(202).json({ started: true });
 });
 

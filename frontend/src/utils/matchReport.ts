@@ -4,3 +4,12 @@ export function parseMatchOverall(text: string | undefined | null): number | nul
   const m = text.match(/종합\s*매칭률\s*[:：]?\s*(\d+)\s*%/);
   return m ? Number(m[1]) : null;
 }
+
+// 공고의 매칭률 평가표를 반환한다. 전체 문서 작성 배치가 만든 documents.matchReport가 있으면
+// 그쪽을(최신 평가), 없으면 매칭률 조회 배치가 채운 top-level matchReport를 사용한다.
+export function resolveMatchReport(job: {
+  documents?: { matchReport?: string } | null;
+  matchReport?: string;
+}): string | undefined {
+  return job.documents?.matchReport ?? job.matchReport;
+}
