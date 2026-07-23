@@ -24,9 +24,15 @@ Get-WmiObject Win32_Process | Where-Object {
   ($_.CommandLine -like "*tsx*" -and $_.CommandLine -like "*R\\backend*")
 } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 
-# 하나만 기동 (node --import tsx: 단일 프로세스로 기동)
-cd C:\R\backend; node --import tsx src/server.ts
+# 하나만 기동 — 반드시 세션 독립(detached)으로 띄운다.
+# (Claude 세션의 백그라운드 태스크로 띄우면 세션 이벤트에 서버가 함께 죽는다.)
+$logDir = "$env:LOCALAPPDATA\curryUP"; New-Item -ItemType Directory -Force $logDir | Out-Null
+Start-Process -FilePath "node" -ArgumentList "--import","tsx","src/server.ts" `
+  -WorkingDirectory "C:\R\backend" -WindowStyle Hidden `
+  -RedirectStandardOutput "$logDir\server.log" -RedirectStandardError "$logDir\server.err.log"
 ```
+
+서버 로그: `%LOCALAPPDATA%\curryUP\server.log` (기동마다 덮어씀)
 
 ## 작업 범위
 

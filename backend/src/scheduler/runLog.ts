@@ -82,19 +82,21 @@ function withLog<T>(fn: (log: RunRecord[]) => Promise<T>): Promise<T> {
 
 // 서버가 비정상 종료되면 "running" 상태로 멈춘 레코드가 영원히 남는다.
 // 다음 기동 시점에 그런 레코드를 failed로 정리해, 관리자 페이지에 좀비 "진행중" 행이 보이지 않게 한다.
+// 기동 직후 catch-up 배치의 기록 쓰기와 겹칠 수 있으므로, 다른 쓰기와 동일하게 withLog 큐를 거친다.
 export async function reconcileInterruptedRuns(): Promise<void> {
-  const log = await readLog();
-  const now = new Date().toISOString();
-  let changed = false;
-  for (const record of log) {
-    if (record.status === "running") {
-      record.status = "failed";
-      record.finishedAt = now;
-      record.error = "서버 재시작으로 중단됨";
-      changed = true;
+  await withLog(async (log) => {
+    const now = new Date().toISOString();
+    let changed = false;
+    for (const record of log) {
+      if (record.status === "running") {
+        record.status = "failed";
+        record.finishedAt = now;
+        record.error = "서버 재시작으로 중단됨";
+        changed = true;
+      }
     }
-  }
-  if (changed) await writeLog(log);
+    if (changed) await writeLog(log);
+  });
 }
 
 export async function hasRunToday(jobName: string): Promise<boolean> {

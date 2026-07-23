@@ -10,6 +10,13 @@ export interface UserProfile {
   sideProjects?: string;             // ← 추가 권장
   learningStack?: string;            // ← 추가 권장 (현재 학습 중인 기술)
   aiToolUsage?: string;              // ← 추가 권장 (AI 도구 활용 경험)
+  // 자소서 개인 자산(코드는 읽지 않고 문서 작성 배치만 참조). 프로필 페이지에서 입력한다.
+  slogan?: string;                   // 대표 슬로건 (문서마다 1회 이상 등장)
+  careerNarrative?: string;          // 커리어 서사 (예: SI→자체 솔루션)
+  education?: string;                // 학력
+  careerDirection?: string;          // 커리어 방향성
+  interestDomains?: string;          // 관심 도메인
+  representativeMetrics?: string;    // 대표 수치 세트 (자소서 수치화용)
 }
 
 export interface JobPosting {

@@ -82,6 +82,48 @@ export function ProfileViewPage() {
             </dd>
           </div>
         )}
+
+        {profile.slogan && (
+          <div className="profile-field">
+            <dt>대표 슬로건</dt>
+            <dd>{profile.slogan}</dd>
+          </div>
+        )}
+
+        {profile.careerNarrative && (
+          <div className="profile-field">
+            <dt>커리어 서사</dt>
+            <dd className="profile-text">{profile.careerNarrative}</dd>
+          </div>
+        )}
+
+        {profile.education && (
+          <div className="profile-field">
+            <dt>학력</dt>
+            <dd>{profile.education}</dd>
+          </div>
+        )}
+
+        {profile.careerDirection && (
+          <div className="profile-field">
+            <dt>커리어 방향성</dt>
+            <dd>{profile.careerDirection}</dd>
+          </div>
+        )}
+
+        {profile.interestDomains && (
+          <div className="profile-field">
+            <dt>관심 도메인</dt>
+            <dd>{profile.interestDomains}</dd>
+          </div>
+        )}
+
+        {profile.representativeMetrics && (
+          <div className="profile-field">
+            <dt>대표 수치 세트</dt>
+            <dd className="profile-text">{profile.representativeMetrics}</dd>
+          </div>
+        )}
       </dl>
 
       <p className="profile-updated">

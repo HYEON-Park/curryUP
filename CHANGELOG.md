@@ -4,6 +4,27 @@
 
 ## 2026-07-23
 
+### runLog 쓰기 경쟁 잔여 수정 — reconcileInterruptedRuns 뮤텍스 적용
+- 07-06(ba54be5) withLog 큐 도입 때 빠졌던 `reconcileInterruptedRuns()`도 큐를 거치도록 수정.
+  서버 기동 시 catch-up 배치의 기록 쓰기와 겹치면 낡은 스냅샷으로 덮어쓸 수 있던 마지막 경쟁 창 제거
+- 파일: `backend/src/scheduler/runLog.ts`
+
+### 매칭표 차트 파서 — 등급 열 자동 감지
+- 매칭률 조회 배치가 4열 표(`| 구분 | 공고 요구 | 보유 여부 | 매칭도 |`)로 생성한 공고에서 차트가 깨지던 문제.
+  헤더 행에서 `평가`/`매칭도` 열 위치를 찾아 등급을 읽도록 보강 (기존 3열 형식은 그대로 동작, 헤더 없으면 3열 간주)
+- 파일: `frontend/src/components/MatchReport.tsx`
+
+### README 현행화 — 수동 UPDATE 파이프라인·추천 팝업 반영
+- §3에 수동 UPDATE 4단계(수집→평점→매칭률→추천 팝업) 흐름 추가, 사용자 흐름에 매칭표 차트 언급
+- §4 컴포넌트 표에 `matchCheckJob.ts`·`MatchReport.tsx`·`RecommendationModal.tsx` 추가
+- §5 AI 기능 위치에 매칭률 조회 배치(matchCheckJob) 추가
+- 파일: `README.md`
+
+### 서버 기동을 세션 독립(detached) 방식으로 전환
+- Claude 세션 백그라운드 태스크로 서버를 띄우면 세션 이벤트(요청 중단 등)에 서버가 함께 종료됨 →
+  `Start-Process` 독립 기동으로 전환, 콘솔 로그는 `%LOCALAPPDATA%\curryUP\server.log`로 리다이렉트
+- 파일: `CLAUDE.md` (재시작 절차 갱신)
+
 ### 추천 공고 팝업 — 수동 업데이트 파이프라인 4단계 신설
 > 기록 : 강조 공고카드 보는것도 귀찮아서 팝업으로 가시성,가독성 다 잡음 이래서 UI가 끊임없이 발전하나보다...
 - UPDATE(수집→평점→매칭률) 완료 직후·대시보드 첫 접근 시, 오늘 수집분 중 종합 매칭률 70% 이상 공고를 중앙 레이어 팝업으로 제안

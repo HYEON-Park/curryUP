@@ -45,6 +45,7 @@ function runClaudeWriteDocuments(): Promise<void> {
     "이미 documents.matchReport가 있으면(매칭률 조회 배치가 먼저 작성한 것) 그 매칭률을 재사용해 70% 판정에 쓰고 matchReport는 다시 만들지 마. coverLetter·intro·workExperience만 새로 채워 병합해.",
     "documents.matchReport가 없으면 매칭률 평가표부터 새로 작성해 함께 저장해.",
     "연차 필터(프로필 ±2 초과 제외·삭제 후보 보고) 등 나머지 규칙도 SKILL.md대로 적용해.",
+    "개인 정보(연차·슬로건·서사·학력 등)는 하드코딩하지 말고 userProfile.json에서 로드해(SKILL §8 필드 매핑). 비어 있는 필드는 건너뛰어.",
     "Bash 도구는 사용하지 말고 Read/Edit/Write 도구만으로 jobPostings.json을 수정해.",
     "서버 재시작·git 작업은 하지 마. 완료 후 작성/생략 건수와 회사 목록을 보고해.",
   ].join("\n");

@@ -19,6 +19,12 @@ const EMPTY_PROFILE: UserProfile = {
   sideProjects: "",
   learningStack: "",
   aiToolUsage: "",
+  slogan: "",
+  careerNarrative: "",
+  education: "",
+  careerDirection: "",
+  interestDomains: "",
+  representativeMetrics: "",
 };
 
 const UNSAVED_CHANGES_MESSAGE = "변경 사항이 저장되지 않을 수 있습니다. 나가시겠습니까?";
@@ -180,6 +186,61 @@ export function ProfileEditPage() {
             value={profile.aiToolUsage ?? ""}
             onChange={(aiToolUsage) => setProfile({ ...profile, aiToolUsage })}
             placeholder="업무나 학습에 활용한 AI 도구 경험"
+          />
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>자소서 개인 자산 (선택)</legend>
+        <p className="fieldset-hint">
+          자기소개서·경력기술서 작성 배치가 참조하는 개인 자산입니다. 비워두면 해당 항목 없이 작성됩니다.
+        </p>
+        <label>
+          대표 슬로건
+          <input
+            value={profile.slogan ?? ""}
+            onChange={(e) => setProfile({ ...profile, slogan: e.target.value })}
+            placeholder='문서마다 반복되는 본인만의 한 문장 (예: "끊김 없이 흐르고…")'
+          />
+        </label>
+        <label>
+          커리어 서사
+          <AutoResizeTextarea
+            value={profile.careerNarrative ?? ""}
+            onChange={(careerNarrative) => setProfile({ ...profile, careerNarrative })}
+            placeholder="지원 시 일관되게 이식할 커리어 스토리 (예: SI 4년 → 자체 솔루션 확신)"
+          />
+        </label>
+        <label>
+          학력
+          <input
+            value={profile.education ?? ""}
+            onChange={(e) => setProfile({ ...profile, education: e.target.value })}
+            placeholder="예: 컴퓨터과학과 학사 (2024.08 졸업)"
+          />
+        </label>
+        <label>
+          커리어 방향성
+          <input
+            value={profile.careerDirection ?? ""}
+            onChange={(e) => setProfile({ ...profile, careerDirection: e.target.value })}
+            placeholder="예: SI → 자체 솔루션 회사"
+          />
+        </label>
+        <label>
+          관심 도메인
+          <input
+            value={profile.interestDomains ?? ""}
+            onChange={(e) => setProfile({ ...profile, interestDomains: e.target.value })}
+            placeholder="예: 금융·공공·솔루션 SW · AI Native 개발"
+          />
+        </label>
+        <label>
+          대표 수치 세트
+          <AutoResizeTextarea
+            value={profile.representativeMetrics ?? ""}
+            onChange={(representativeMetrics) => setProfile({ ...profile, representativeMetrics })}
+            placeholder="자소서 수치화에 재사용할 대표 성과 수치 (예: 서류 검증 누락 0건, 처리시간 24h→1h)"
           />
         </label>
       </fieldset>

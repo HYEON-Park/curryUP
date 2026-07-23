@@ -69,9 +69,16 @@ npm start
     → 문서 미생성 공고 중 신규 고평점(평점 2.8+·매칭률 70%+) 또는 즐겨찾기 공고가 있으면
     → Claude CLI(headless)를 자동 실행해 자기소개서 / 소개 / 경력사항 / 매칭표 작성
 
+[수동 UPDATE — 대시보드 [공고업데이트] 버튼]
+  ① 수집 → ② 평점 조회 → ③ 매칭률 조회 (Claude Code) → ④ 추천 공고 팝업
+    → ③ 오늘 수집분 중 매칭표(matchReport) 없는 공고에 매칭률 사전 평가표만 작성
+    → ④ 오늘 수집분 중 매칭률 70% 이상 공고가 있으면 대시보드 중앙 팝업으로 제안
+       (카드 클릭 → 상세를 새 탭으로 / 닫으면 같은 업데이트 세션에선 재노출 안 함)
+
 [사용자]
   → 대시보드(/) 에서 공고 카드 확인
   → 카드 클릭 → 상세 페이지에서 생성된 문서 탭 조회 (매칭표·자기소개서·소개·경력사항)
+    → 매칭표는 등급별 막대 차트로 렌더 (종합 매칭률 % 표시)
   → 불필요한 공고는 [×] 버튼으로 숨김 처리
   → /admin 에서 숨김 공고 복구 / 영구 삭제 및 배치 수동 실행
 ```
@@ -89,22 +96,26 @@ npm start
 | `backend/src/matching/matchEngine.ts` | 프로필과 공고를 비교해 매칭 여부 판단. 경력(±2년) AND 지역 AND (스킬 OR 직무) |
 | `backend/src/scheduler/` | node-cron 기반 스케줄러. scrape(22:00) → ratingCheck → write-documents 체인, notify(09:30) |
 | `backend/src/scheduler/writeDocumentsJob.ts` | scrape·평점 조회 종료 후 대상 공고가 있으면 Claude CLI(headless)를 실행해 문서 작성 |
+| `backend/src/scheduler/matchCheckJob.ts` | 수동 UPDATE 3단계. 오늘 수집분 중 매칭표 없는 공고에 Claude CLI(headless)로 매칭률 사전 평가표 작성 |
 | `.claude/skills/write-documents/` | Claude Code가 공고별 매칭표·자기소개서·소개·경력사항을 작성하는 스킬. `writeDocumentsJob`이 headless로 호출 |
 | `backend/src/data/store.ts` | JSON 파일 기반 데이터 레이어. 공고·숨김 공고·프로필·실행 이력 관리 |
 | `backend/src/routes/` | Express REST API. `/api/jobs`, `/api/profile`, `/api/admin/*` |
 | `frontend/src/pages/DashboardPage.tsx` | 공고 카드 그리드. 페이지네이션(URL 기반), 숨김 처리 |
 | `frontend/src/pages/AdminBatchPage.tsx` | 관리자 탭 UI. [대쉬보드 관리] / [배치 모니터링 및 제어] |
-| `frontend/src/pages/JobDetailPage.tsx` | 공고 상세 + 생성 문서 탭(자기소개서·소개·경력사항) |
+| `frontend/src/pages/JobDetailPage.tsx` | 공고 상세 + 생성 문서 탭(매칭표·자기소개서·소개·경력사항) |
+| `frontend/src/components/MatchReport.tsx` | 매칭표를 등급별 막대 차트로 렌더. 표 헤더에서 등급 열(평가/매칭도)을 자동 감지 |
+| `frontend/src/components/RecommendationModal.tsx` | 매칭률 70%+ 신규 공고 추천 팝업. 업데이트 세션당 1회 노출 |
 | `SKILL.md` | 크롤링 대상 URL 목록. 주석(`#`) 처리로 비활성화 가능 |
 
 ---
 
 ## 5. AI 기능이 들어간 위치와 이유
 
-**위치:** 문서 본문 작성은 Claude Code가 담당한다.
+**위치:** 문서 본문 작성과 매칭률 평가는 Claude Code가 담당한다.
 
 - `.claude/skills/write-documents/SKILL.md` — 공고별 매칭표·자기소개서·소개·경력사항 작성 프롬프트 체계와 실행 절차
 - `backend/src/scheduler/writeDocumentsJob.ts` — scrape·평점 조회 종료 후 대상 공고가 있으면 `claude -p`(headless)를 실행
+- `backend/src/scheduler/matchCheckJob.ts` — 수동 UPDATE 흐름에서 매칭률 사전 평가표만 먼저 작성하는 `claude -p`(headless) 배치. 이후 문서 작성 배치가 이 매칭률을 재사용한다
 
 **이유:**
 

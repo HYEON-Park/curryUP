@@ -34,7 +34,7 @@ function runClaudeMatchCheck(): Promise<void> {
     "- 필수 자격요건/스택/담당업무/우대사항 매칭, 강점 Top 3, 갭 Top 3~5를 포함하고,",
     "- 반드시 '종합 매칭률: N%' 한 줄을 포함할 것(대시보드가 이 문자열로 매칭률을 파싱한다).",
     "- 지원 권장도와 다른 공고 대비 간단 비교도 포함.",
-    "프로필은 backend/src/data/userProfile.json에서 로드해 SKILL §8 프로필과 대조해.",
+    "프로필은 backend/src/data/userProfile.json에서 로드해(SKILL §8 필드 매핑). 개인 정보는 하드코딩하지 마.",
     "저장 위치: 각 공고 객체의 documents 객체 안 \"matchReport\" 필드(문자열)에 저장해.",
     "  - documents가 null이면 새로 만들되 { matchReport, coverLetter: \"\", intro: \"\", workExperience: \"\", generatedAt: <ISO시각> } 형태로 넣어(자소서·경력기술서·소개는 빈 문자열로 둬).",
     "  - documents가 이미 있으면 그 안의 matchReport만 채우고 coverLetter/intro/workExperience 등 기존 값은 절대 건드리지 마.",

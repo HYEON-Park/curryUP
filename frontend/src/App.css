@@ -620,6 +620,12 @@ button[type="submit"] {
   text-align: left;
 }
 
+.fieldset-hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--text);
+}
+
 .tag-input {
   display: flex;
   flex-wrap: wrap;

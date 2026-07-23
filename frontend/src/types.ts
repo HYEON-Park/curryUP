@@ -10,6 +10,13 @@ export interface UserProfile {
   sideProjects?: string;
   learningStack?: string;
   aiToolUsage?: string;
+  // 자소서 개인 자산(프로필 페이지에서 입력, 문서 작성 배치가 참조)
+  slogan?: string;
+  careerNarrative?: string;
+  education?: string;
+  careerDirection?: string;
+  interestDomains?: string;
+  representativeMetrics?: string;
 }
 
 export interface GeneratedDocuments {

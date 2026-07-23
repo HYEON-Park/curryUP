@@ -48,6 +48,9 @@ function parseReport(text: string): ParsedReport {
   const overall = overallMatch ? Number(overallMatch[1]) : null;
 
   const criteria: Criterion[] = [];
+  // 등급 열 위치는 헤더 행에서 찾는다. 배치 출력이 3열(| 항목 | 평가 | 근거 |)일 때도,
+  // 4열(| 구분 | 공고 요구 | 보유 여부 | 매칭도 |)처럼 변형돼도 등급 열만 올바르게 집는다.
+  let gradeIdx = 1; // 헤더를 못 찾으면 기존 3열 형식(2번째 열이 등급)으로 간주
   for (const line of text.split(/\r?\n/)) {
     const trimmed = line.trim();
     if (!trimmed.startsWith("|")) continue;
@@ -56,9 +59,15 @@ function parseReport(text: string): ParsedReport {
       .map((c) => c.trim())
       .filter((c) => c.length > 0);
     if (cells.length < 3) continue;
-    const [label, grade, ...reasonParts] = cells;
-    if (label === "항목" || /^-{2,}$/.test(label) || /^:?-{2,}:?$/.test(label)) continue; // 헤더·구분선
-    const reason = reasonParts.join(" | ");
+    if (cells.every((c) => /^:?-{2,}:?$/.test(c))) continue; // 구분선
+    const headerIdx = cells.findIndex((c) => c === "평가" || c === "매칭도");
+    if (headerIdx > 0) {
+      gradeIdx = headerIdx; // 헤더 행: 등급 열 위치만 기억하고 데이터로는 쓰지 않는다
+      continue;
+    }
+    const label = cells[0];
+    const grade = cells[gradeIdx] ?? "";
+    const reason = cells.filter((_, i) => i !== 0 && i !== gradeIdx).join(" | ");
     criteria.push({ label, grade, pct: gradeToPct(grade) ?? 0, reason });
   }
 
