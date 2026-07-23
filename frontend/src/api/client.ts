@@ -33,6 +33,12 @@ export async function fetchJobDetail(id: string): Promise<JobPosting> {
   return res.json();
 }
 
+// 추천 공고 팝업용: 오늘 수집분 중 매칭률 70% 이상 공고와, 업데이트 세션 식별자.
+export async function fetchRecommendations(): Promise<{ sessionId: string | null; items: JobPosting[] }> {
+  const res = await fetch(`${BASE_URL}/jobs/recommendations`);
+  return res.json();
+}
+
 export async function triggerCollect(): Promise<{ collected: number; newlyMatched: number; skillFileWarning?: string }> {
   const res = await fetch(`${BASE_URL}/collect`, { method: "POST" });
   if (!res.ok) throw new Error("수집 요청이 실패했습니다.");

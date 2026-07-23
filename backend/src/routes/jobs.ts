@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { getJobPostings, hideJob, toggleFavorite } from "../data/store.js";
+import { getLatestRun } from "../scheduler/runLog.js";
 import type { JobPosting } from "../types.js";
 import { daysUntilDeadline } from "../utils/deadline.js";
 
@@ -61,6 +62,32 @@ jobsRouter.get("/all", async (_req, res) => {
   const allJobs = await getJobPostings();
   const sorted = [...allJobs].sort(compareJobs);
   res.json({ items: sorted });
+});
+
+// 추천 공고 팝업(수동 업데이트 파이프라인 4단계)용. 오늘 수집된 공고 중 매칭률 종합 70% 이상만 반환한다.
+// sessionId: 이번 업데이트 세션 식별자(= 오늘 완료된 가장 최근 수동 collect 실행 id). 팝업 중복 노출
+// 방지를 위해 프런트가 이 값을 dismiss 플래그로 사용한다. 오늘 수동 수집이 없으면 null(팝업 미노출).
+// 주의: 이 라우트는 "/:id"보다 먼저 등록해야 "recommendations"가 id로 매칭되지 않는다.
+jobsRouter.get("/recommendations", async (_req, res) => {
+  const jobs = await getJobPostings();
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const items = jobs
+    .filter((j) => j.collectedAt.slice(0, 10) === todayKey)
+    .filter((j) => {
+      const overall = matchOverall(j.documents?.matchReport);
+      return overall !== null && overall >= 70;
+    })
+    .sort(compareJobs);
+
+  const now = new Date();
+  const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
+    now.getDate()
+  ).padStart(2, "0")}`;
+  const latestCollect = await getLatestRun("collect", "manual");
+  // runLog의 date는 로컬 날짜 기준이므로 localToday와 비교한다.
+  const sessionId = latestCollect && latestCollect.date === localToday ? latestCollect.id : null;
+
+  res.json({ sessionId, items });
 });
 
 jobsRouter.get("/:id", async (req, res) => {

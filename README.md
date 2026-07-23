@@ -25,9 +25,6 @@
 - Node.js 18+
 - [Claude Code](https://claude.com/claude-code) CLI — 문서 작성 배치가 headless로 호출한다.
 
-> 이전 버전은 로컬 LLM(Ollama)으로 문서를 생성했으나, 속도·정확도 문제로 Claude Code 배치로 전환했다.
-> Ollama 배치(`aiBatchJob`)는 관리자 페이지의 수동 실행 버튼으로만 남아 있으며 자동 스케줄은 비활성화됐다.
-
 ### 2.2 설치
 
 ```sh
@@ -90,9 +87,9 @@ npm start
 |------|------|
 | `backend/src/scrapers/` | 사람인·잡코리아 스크래퍼. `BaseScraper` 추상 클래스 기반으로 확장 가능 |
 | `backend/src/matching/matchEngine.ts` | 프로필과 공고를 비교해 매칭 여부 판단. 경력(±2년) AND 지역 AND (스킬 OR 직무) |
-| `backend/src/scheduler/` | node-cron 기반 스케줄러. scrape(22:00) → ratingCheck → write-documents 체인, notify(08:00). aiBatch는 자동 스케줄 비활성화(수동만) |
+| `backend/src/scheduler/` | node-cron 기반 스케줄러. scrape(22:00) → ratingCheck → write-documents 체인, notify(09:30) |
 | `backend/src/scheduler/writeDocumentsJob.ts` | scrape·평점 조회 종료 후 대상 공고가 있으면 Claude CLI(headless)를 실행해 문서 작성 |
-| `backend/src/ai/` | 3종 문서(자소서·소개·경력사항) 생성 조율. 문서 본문 작성은 Claude Code가 담당 |
+| `.claude/skills/write-documents/` | Claude Code가 공고별 매칭표·자기소개서·소개·경력사항을 작성하는 스킬. `writeDocumentsJob`이 headless로 호출 |
 | `backend/src/data/store.ts` | JSON 파일 기반 데이터 레이어. 공고·숨김 공고·프로필·실행 이력 관리 |
 | `backend/src/routes/` | Express REST API. `/api/jobs`, `/api/profile`, `/api/admin/*` |
 | `frontend/src/pages/DashboardPage.tsx` | 공고 카드 그리드. 페이지네이션(URL 기반), 숨김 처리 |
@@ -104,20 +101,17 @@ npm start
 
 ## 5. AI 기능이 들어간 위치와 이유
 
-**위치:** `backend/src/ai/`
+**위치:** 문서 본문 작성은 Claude Code가 담당한다.
 
-- `ollamaClient.ts` — Ollama REST API 호출 래퍼
-- `coverLetterGenerator.ts` — 자기소개서 생성
-- `introGenerator.ts` — 한 문단 소개 생성
-- `workExperienceGenerator.ts` — 경력사항 생성
-- `generateDocuments.ts` — 위 3개 생성기를 조율
+- `.claude/skills/write-documents/SKILL.md` — 공고별 매칭표·자기소개서·소개·경력사항 작성 프롬프트 체계와 실행 절차
+- `backend/src/scheduler/writeDocumentsJob.ts` — scrape·평점 조회 종료 후 대상 공고가 있으면 `claude -p`(headless)를 실행
 
 **이유:**
 
 | 선택 | 이유 |
 |------|------|
-| 로컬 LLM (Ollama) | API 키 불필요, 비용 없음, 개인 이력서 데이터를 외부에 전송하지 않음 |
-| 야간 배치 분리(23:00) | 건당 4~5분 소요되는 추론을 수집과 분리해 대시보드 응답성 확보 |
+| Claude Code 헤드리스 배치 | 별도 API 키·서버 인프라 없이 로컬 CLI로 고품질 초안 생성 |
+| scrape·평점 조회 뒤 체이닝 | 수집·평점이 끝난 대상만 이어서 실행해 브라우저 상태와 무관하게 항상 수행 |
 | 공고별 개별 생성 | 공고의 요구 기술·직무 키워드를 컨텍스트로 주입해 맞춤형 초안 생성 |
 
 ---
@@ -128,8 +122,8 @@ npm start
 - 개발 편의를 위해 Express가 Vite를 미들웨어로 내장해 API와 프론트를 하나의 포트로 서빙한다.
 - 프로덕션에서는 `frontend/dist` 정적 빌드를 그대로 서빙하므로 별도 웹 서버 불필요.
 
-**6.2 AI 배치 분리**
-- 수집(00:00)과 문서 생성(23:00)을 분리해, 공고는 아침에 바로 볼 수 있고 문서는 밤사이 준비되는 구조로 설계했다.
+**6.2 배치 체이닝**
+- scrape(22:00) → 평점 조회 → 문서 작성을 백엔드에서 이어서 실행해, 브라우저 탭 상태와 무관하게 밤사이 공고 수집부터 문서 초안까지 한 번에 준비되도록 설계했다.
 
 **6.3 Soft Delete 구조**
 - 대시보드에서 삭제한 공고는 `hiddenJobPostings.json`으로 이동해 복구 가능하게 유지하고, 관리자가 명시적으로 영구 삭제(Hard Delete)를 선택해야 완전히 제거된다.

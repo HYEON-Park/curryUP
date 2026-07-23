@@ -162,6 +162,15 @@ export async function isJobRunning(jobName: string): Promise<boolean> {
   return log.some((record) => record.jobName === jobName && record.status === "running");
 }
 
+// 특정 배치(jobName)의 가장 최근 실행 레코드를 반환한다. trigger로 수동/자동을 좁힐 수 있다.
+// 추천 공고 팝업이 "이번 업데이트 세션"을 식별하는 마커(최근 수동 collect 실행)로 사용한다.
+export async function getLatestRun(jobName: string, trigger?: RunTrigger): Promise<RunRecord | null> {
+  const log = await readLog();
+  const filtered = log.filter((r) => r.jobName === jobName && (!trigger || r.trigger === trigger));
+  if (filtered.length === 0) return null;
+  return filtered.reduce((latest, r) => (r.startedAt > latest.startedAt ? r : latest));
+}
+
 export async function getRunHistory(page: number, pageSize = 20): Promise<RunHistoryPage> {
   const log = await readLog();
   const sorted = [...log].sort((a, b) => b.startedAt.localeCompare(a.startedAt));

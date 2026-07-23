@@ -2,6 +2,31 @@
 
 프로젝트 주요 변경 이력. 최신이 위. 각 항목에는 수정한 소스 파일명을 함께 기록한다.
 
+## 2026-07-23
+
+### 추천 공고 팝업 — 수동 업데이트 파이프라인 4단계 신설
+> 기록 : 강조 공고카드 보는것도 귀찮아서 팝업으로 가시성,가독성 다 잡음 이래서 UI가 끊임없이 발전하나보다...
+- UPDATE(수집→평점→매칭률) 완료 직후·대시보드 첫 접근 시, 오늘 수집분 중 종합 매칭률 70% 이상 공고를 중앙 레이어 팝업으로 제안
+- 백엔드 `GET /jobs/recommendations`: 오늘(collectedAt ISO 날짜) 수집분 + `documents.matchReport` 종합 70%+ 필터, `/:id`보다 먼저 등록. `sessionId`(오늘 최근 수동 collect 실행 id)로 업데이트 세션 식별
+- 프런트: 팝업 모달(회사명·직무명·매칭률 배지, 카드 클릭 시 상세를 새 탭으로, [X]/배경/ESC로 fade-out 닫기). 닫으면 `localStorage`에 sessionId를 dismiss 플래그로 저장해 같은 세션 내 새로고침 시 재노출 방지
+- 신규: `frontend/src/components/RecommendationModal.tsx`
+- 수정: `backend/src/routes/jobs.ts`, `backend/src/scheduler/runLog.ts`, `frontend/src/api/client.ts`, `frontend/src/pages/DashboardPage.tsx`, `frontend/src/App.css`
+
+## 2026-07-16
+
+### Ollama 문서 생성 코드 제거, 수동 실행 버튼을 Claude 배치로 전환
+- 미사용 Ollama 문서 생성 파이프라인 전체 삭제 (`ai/` 9개 + `generateMissingDocuments` + `aiBatchJob`)
+- 관리자 `POST /ai/run`을 Ollama(`runAiBatchNow`) 대신 Claude 문서 작성 배치(`runWriteDocumentsIfNeeded`)로 재지정, `GET /ai/status`도 `write-documents` 잡 검사로 변경 (재시작 가드가 실제 활성 배치를 보호)
+- 프론트 관리자 버튼: `runAiBatch`→`runWriteDocsBatch`, 라벨 `문서 작성 배치 (Claude)`·`지금 문서 작성 (Claude)`
+- `server.ts` 죽은 aiBatch 주석 정리, 미사용 `undici` 직접 의존성 제거
+- 삭제: `backend/src/ai/*`(9개), `backend/src/pipeline/generateMissingDocuments.ts`, `backend/src/scheduler/aiBatchJob.ts`
+- 수정: `backend/src/routes/admin.ts`, `backend/src/server.ts`, `backend/package.json`, `frontend/src/api/client.ts`, `frontend/src/pages/AdminBatchPage.tsx`
+
+### README 정리 (Ollama 서술 제거·배치 시각 정정)
+- 사전 요구사항의 Ollama→Claude 전환 안내 제거, 5장 AI 기능 서술을 Claude Code 헤드리스 배치 기준으로 재작성
+- 스케줄러 표 `notify(08:00)`→`notify(09:30)` 정정, 6.2를 `00:00/23:00 분리`→`22:00 체이닝`으로 정정
+- 파일: `README.md`
+
 ## 2026-07-14
 
 ### 대시보드 정렬·강조 및 고정 그리드 (커밋 dd59d6a)

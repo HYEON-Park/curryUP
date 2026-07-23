@@ -6,12 +6,17 @@ import {
   fetchJobs,
   fetchMatchCheckStatus,
   fetchRatingCheckStatus,
+  fetchRecommendations,
   toggleFavorite,
   triggerCollect,
 } from "../api/client";
+import { RecommendationModal } from "../components/RecommendationModal";
 import type { JobPosting } from "../types";
 import { formatDday } from "../utils/dday";
 import { parseMatchOverall } from "../utils/matchReport";
+
+// 추천 공고 팝업을 닫은 업데이트 세션을 기록해, 같은 세션에선 새로고침해도 다시 뜨지 않게 한다.
+const REC_DISMISS_KEY = "recommendationDismissedSession";
 
 function sourceLabel(sourceUrl: string): string {
   if (sourceUrl.includes("jobkorea.co.kr")) return "J";
@@ -42,10 +47,39 @@ export function DashboardPage() {
   const [activeSearch, setActiveSearch] = useState<{ field: SearchField; term: string } | null>(null);
   // 검색은 전체 페이지를 대상으로 해야 하므로, 검색 활성화 시 전체 공고를 한 번 받아와 클라이언트에서 필터링·페이지네이션한다.
   const [allJobs, setAllJobs] = useState<JobPosting[]>([]);
+  // 추천 공고 팝업 상태
+  const [recItems, setRecItems] = useState<JobPosting[]>([]);
+  const [recSessionId, setRecSessionId] = useState<string | null>(null);
+  const [recOpen, setRecOpen] = useState(false);
 
   function setPage(n: number) {
     setSearchParams({ page: String(n) }, { replace: true });
   }
+
+  // 추천 공고 팝업 트리거: 오늘 수집분 중 매칭률 70%+가 있고, 이번 업데이트 세션을 아직 닫지 않았으면 노출.
+  // 마운트 시(업데이트 완료 후 첫 접근·새로고침 포함) + UPDATE 완료 직후에 호출된다.
+  async function maybeShowRecommendations() {
+    try {
+      const { sessionId, items } = await fetchRecommendations();
+      if (!sessionId || items.length === 0) return;
+      if (localStorage.getItem(REC_DISMISS_KEY) === sessionId) return;
+      setRecItems(items);
+      setRecSessionId(sessionId);
+      setRecOpen(true);
+    } catch {
+      /* 추천 팝업은 부가 기능이라 실패해도 조용히 무시 */
+    }
+  }
+
+  function handleRecClose() {
+    if (recSessionId) localStorage.setItem(REC_DISMISS_KEY, recSessionId);
+    setRecOpen(false);
+  }
+
+  useEffect(() => {
+    maybeShowRecommendations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (activeSearch) return;
@@ -117,6 +151,9 @@ export function DashboardPage() {
       await waitForBatch(fetchMatchCheckStatus);
       await refreshCurrentView(1);
       setCollectStatus(`${base}, 평점 조회 완료, 매칭률 조회 완료`);
+
+      // 4단계: 파이프라인 완료 직후 추천 공고 팝업 트리거
+      await maybeShowRecommendations();
     } catch {
       setCollectStatus("수집 실패");
     } finally {
@@ -258,6 +295,8 @@ export function DashboardPage() {
           )}
         </>
       )}
+
+      {recOpen && <RecommendationModal items={recItems} onClose={handleRecClose} />}
     </div>
   );
 }
