@@ -495,6 +495,29 @@ button[type="submit"] {
   margin: 16px 0 8px auto;
 }
 
+/* 상세 페이지 상단: 즐겨찾기(좌) + 목록으로(우)를 한 줄에 오른쪽 정렬로 묶는다. */
+.job-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* flex 배치가 정렬을 담당하므로 목록 버튼의 auto 마진을 상쇄한다. */
+.job-detail-header .back-to-list {
+  margin: 16px 0 8px;
+}
+
+/* 카드용 별 버튼은 카드 내부 절대배치를 전제하므로, 상세 헤더에서는 흐름 배치로 되돌린다. */
+.job-detail-header .job-card-favorite {
+  position: static;
+  opacity: 0.75;
+}
+
+.job-detail-header .job-card-favorite.favorited {
+  opacity: 1;
+}
+
 .source-link {
   display: inline-block;
   margin: 8px 0 20px;

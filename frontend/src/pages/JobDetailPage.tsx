@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { fetchJobDetail } from "../api/client";
+import { fetchJobDetail, toggleFavorite } from "../api/client";
 import { MatchReport } from "../components/MatchReport";
 import type { JobPosting } from "../types";
 
@@ -40,15 +40,32 @@ export function JobDetailPage() {
     });
   }, [id]);
 
+  // 즐겨찾기는 대시보드 카드와 같은 필드·같은 엔드포인트(toggleFavorite)를 그대로 재사용한다.
+  // 저장 위치가 동일하므로 상세에서 토글해도 목록의 즐겨찾기와 통합 관리된다.
+  async function handleFavorite() {
+    if (!job) return;
+    const result = await toggleFavorite(job.id);
+    setJob({ ...job, isFavorite: result.isFavorite });
+  }
+
   if (!job) return <p>불러오는 중...</p>;
 
   const availableTabs = getAvailableTabs(job);
 
   return (
     <div className="job-detail">
-      <button className="back-to-list" onClick={() => navigate(-1)}>
-        목록으로
-      </button>
+      <div className="job-detail-header">
+        <button
+          className={`job-card-favorite${job.isFavorite ? " favorited" : ""}`}
+          title={job.isFavorite ? "즐겨찾기 해제" : "즐겨찾기"}
+          onClick={handleFavorite}
+        >
+          {job.isFavorite ? "★" : "☆"}
+        </button>
+        <button className="back-to-list" onClick={() => navigate(-1)}>
+          목록으로
+        </button>
+      </div>
       <h2>
         {job.company} — {job.title}
       </h2>
