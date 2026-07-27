@@ -2,6 +2,25 @@
 
 프로젝트 주요 변경 이력. 최신이 위. 각 항목에는 수정한 소스 파일명을 함께 기록한다.
 
+## 2026-07-24
+
+### "오늘 수집분" 날짜키를 로컬(KST) 기준으로 통일 — 매칭률 배치·추천 팝업 누락 수정
+> 기록 : 08:55에 UPDATE 눌렀는데 매칭률 배치가 조용히 건너뛰어짐. 로그조차 안 남아서 처음엔 로그 유실인 줄 알았는데, 범인은 UTC였다. 09시 이전에 수집하면 하루 종일 "오늘"이 아니었던 것.
+- 증상: 수집·평점 조회는 성공했는데 매칭률 조회 배치가 실행되지 않고 추천 팝업도 미노출. 관리자 배치 로그에 `매칭률조회` 행 자체가 없었음
+- 원인: `new Date().toISOString().slice(0,10)`(UTC)로 "오늘"을 판정. KST(UTC+9)에서 08:55 수집분의 `collectedAt`은 `2026-07-23T23:55Z`(키 `07-23`)인데, 평점 조회가 3분 38초 걸려 09:00(=UTC 00:00)에 실행된 `countTargets()`의 키는 `07-24` → 대상 0건. 대상이 0이면 `runManualJob` 호출 전에 `return null` 하므로 실행 이력도 남지 않음(설계상 정상)
+- 로컬 날짜키 헬퍼 신설(`localDateKey`/`todayLocalKey`/`isCollectedToday`) 후, 날짜를 판정하던 5곳이 단일 함수를 공유하도록 수정. `runLog.ts`에 있던 동일 로직 사설 `todayKey()`도 제거해 중복 해소
+- `jobs.ts` 추천 팝업은 공고는 UTC·`sessionId`는 로컬 인라인 계산으로 기준이 섞여 있던 것을 로컬로 통일(인라인 날짜 계산 코드 삭제)
+- 배치 대상 선별을 headless Claude가 수행하는 두 배치는 프롬프트가 "collectedAt의 ISO 날짜(앞 10자)"를 지시하고 있어 서버 필터만 고치면 CLI가 여전히 UTC로 골랐음 → 서버가 계산한 날짜키를 프롬프트에 주입하도록 변경
+- 검증: 동일 데이터에서 대상 0건 → 14건. 매칭률 배치 재실행 success(04:18:52~04:29:34), 추천 팝업 2건(72%·74%) 정상 노출
+- 신규: `backend/src/utils/date.ts`
+- 수정: `backend/src/scheduler/matchCheckJob.ts`, `backend/src/scheduler/writeDocumentsJob.ts`, `backend/src/routes/jobs.ts`, `backend/src/data/store.ts`, `backend/src/scheduler/runLog.ts`
+
+### 작업 이력 관리 문서(PROGRESS.md) 도입
+- "현재 작업 중 / 다음 할 일 / 최근 완료 / 주요 결정" 4개 섹션으로 세션 간 작업 상태를 인계. 세션 시작 시 먼저 읽고, 주요 단계 완료 시 갱신
+- CHANGELOG(변경 이력)·README(구조 설명)와 역할 분리
+- 신규: `PROGRESS.md`
+- 수정: `CLAUDE.md` (작업 이력 관리 절차 추가)
+
 ## 2026-07-23
 
 ### runLog 쓰기 경쟁 잔여 수정 — reconcileInterruptedRuns 뮤텍스 적용

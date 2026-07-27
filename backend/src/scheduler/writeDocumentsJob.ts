@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { getJobPostings } from "../data/store.js";
+import { isCollectedToday, todayLocalKey } from "../utils/date.js";
 import { runManualJob, type RunRecord } from "./runLog.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -12,7 +13,7 @@ export const WRITE_DOCS_JOB_NAME = "write-documents";
 // 문서생성 기준(.claude/skills/write-documents/SKILL.md와 동일):
 //   1) 신규 트랙: 오늘 수집 + 평점 2.8 이상 (+ 매칭률 70% 이상 — 매칭률은 Claude가 평가표 작성 시 판단)
 //   2) 즐겨찾기 트랙: isFavorite — 평점·매칭률 조건 없음
-// collectedAt의 날짜 비교는 deleteTodaysJobPostings()와 동일하게 ISO(UTC) 날짜 문자열 기준을 따른다.
+// collectedAt의 날짜 비교는 utils/date.ts의 로컬 날짜 기준을 공유한다(deleteTodaysJobPostings와 동일).
 const MIN_RATING = 2.8;
 
 // "이미 처리됨" 판정은 documents 객체 존재가 아니라 자소서(coverLetter) 작성 여부로 한다.
@@ -24,23 +25,24 @@ function hasCoverLetter(j: { documents: { coverLetter?: string } | null }): bool
 
 async function countTargets(): Promise<number> {
   const jobs = await getJobPostings();
-  const todayKey = new Date().toISOString().slice(0, 10);
   return jobs.filter((j) => {
     if (hasCoverLetter(j)) return false;
     if (j.isFavorite === true) return true;
     const rating = j.rating ? parseFloat(j.rating) : NaN;
-    return j.collectedAt.slice(0, 10) === todayKey && rating >= MIN_RATING;
+    return isCollectedToday(j.collectedAt) && rating >= MIN_RATING;
   }).length;
 }
 
 // Claude Code CLI를 headless로 실행해 write-documents 스킬 절차대로 문서를 작성하게 한다.
 // 프롬프트는 셸 이스케이프 문제를 피하기 위해 stdin으로 전달한다.
-function runClaudeWriteDocuments(): Promise<void> {
+// todayKey는 서버가 계산한 로컬 날짜다. collectedAt은 UTC ISO라 앞 10자를 그대로 비교하면
+// 로컬 00:00~09:00 수집분이 전날로 밀리므로, 판정 기준을 프롬프트에 명시해 넘긴다.
+function runClaudeWriteDocuments(todayKey: string): Promise<void> {
   const prompt = [
     "write-documents 문서 작성 배치를 실행해줘.",
     ".claude/skills/write-documents/SKILL.md의 프롬프트 체계와 실행 절차를 그대로 따라.",
     "문서생성 기준(SKILL.md와 동일): 아직 자소서가 없는 공고(documents가 null이거나, documents는 있어도 coverLetter가 빈 문자열/없음) 중",
-    "(1) 오늘 수집 + 평점 2.8 이상 + 매칭률 사전 평가 70% 이상인 공고 — 70% 미만이면 작성 생략하고 사유 보고,",
+    `(1) 오늘 수집(collectedAt을 로컬 시간대로 변환한 날짜가 ${todayKey}) + 평점 2.8 이상 + 매칭률 사전 평가 70% 이상인 공고 — 70% 미만이면 작성 생략하고 사유 보고,`,
     "(2) 즐겨찾기(isFavorite) 공고 — 조건 없이 작성.",
     "이미 documents.matchReport가 있으면(매칭률 조회 배치가 먼저 작성한 것) 그 매칭률을 재사용해 70% 판정에 쓰고 matchReport는 다시 만들지 마. coverLetter·intro·workExperience만 새로 채워 병합해.",
     "documents.matchReport가 없으면 매칭률 평가표부터 새로 작성해 함께 저장해.",
@@ -84,5 +86,6 @@ export async function runWriteDocumentsIfNeeded(): Promise<RunRecord | null> {
     return null;
   }
   console.log(`[writeDocumentsJob] 작성 대상 ${targetCount}건 — Claude 문서 작성 배치 시작`);
-  return runManualJob(WRITE_DOCS_JOB_NAME, runClaudeWriteDocuments);
+  const todayKey = todayLocalKey();
+  return runManualJob(WRITE_DOCS_JOB_NAME, () => runClaudeWriteDocuments(todayKey));
 }

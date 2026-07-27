@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { getJobPostings } from "../data/store.js";
+import { isCollectedToday, todayLocalKey } from "../utils/date.js";
 import { runManualJob, type RunRecord } from "./runLog.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -9,25 +10,25 @@ const REPO_ROOT = path.resolve(__dirname, "../../..");
 
 export const MATCH_CHECK_JOB_NAME = "매칭률조회";
 
-// 대상: 오늘(collectedAt ISO 날짜 기준) 수집된 공고 중 아직 매칭률 평가표(documents.matchReport)가 없는 공고.
+// 대상: 오늘 수집된 공고 중 아직 매칭률 평가표(documents.matchReport)가 없는 공고.
 // 매칭률은 documents.matchReport 한 곳에만 쌓는다(문서 작성 배치와 동일 필드).
-// collectedAt 날짜 비교는 writeDocumentsJob/deleteTodaysJobPostings와 동일하게 ISO(UTC) 날짜 문자열 기준.
+// collectedAt 날짜 비교는 utils/date.ts의 로컬 날짜 기준을 공유한다(writeDocumentsJob·
+// deleteTodaysJobPostings·추천 팝업과 동일 규칙).
 async function countTargets(): Promise<number> {
   const jobs = await getJobPostings();
-  const todayKey = new Date().toISOString().slice(0, 10);
-  return jobs.filter(
-    (j) => j.collectedAt.slice(0, 10) === todayKey && !j.documents?.matchReport
-  ).length;
+  return jobs.filter((j) => isCollectedToday(j.collectedAt) && !j.documents?.matchReport).length;
 }
 
 // Claude Code CLI를 headless로 실행해 매칭률 사전 평가표(§6-1/6-2)만 작성하게 한다.
 // 자소서·경력기술서는 만들지 않고 documents.matchReport만 채운다. 나머지 문서 필드(coverLetter·intro·
 // workExperience)는 빈 문자열로 둬, 이후 문서 작성 배치가 coverLetter가 비어 있음을 보고 자소서를 채운다.
 // 프롬프트는 셸 이스케이프 문제를 피하기 위해 stdin으로 전달한다.
-function runClaudeMatchCheck(): Promise<void> {
+// todayKey는 서버가 계산한 로컬 날짜다. collectedAt은 UTC ISO라 앞 10자를 그대로 비교하면
+// 로컬 00:00~09:00 수집분이 전날로 밀리므로, 판정 기준을 프롬프트에 명시해 넘긴다.
+function runClaudeMatchCheck(todayKey: string): Promise<void> {
   const prompt = [
     "매칭률 조회 배치를 실행해줘.",
-    "대상: backend/src/data/jobPostings.json에서 collectedAt의 ISO 날짜(앞 10자)가 오늘과 같은 공고 중,",
+    `대상: backend/src/data/jobPostings.json에서 collectedAt(UTC ISO)을 로컬 시간대로 변환한 날짜가 ${todayKey}인 공고 중,`,
     "documents.matchReport가 없는 공고 전부(documents가 null이거나, documents는 있어도 matchReport가 비어 있는 경우).",
     "각 대상 공고에 대해 .claude/skills/write-documents/SKILL.md의",
     "'§6-1 매칭률 사전 평가 + §6-2 지원 권장도' 형식만 작성해(자소서·경력기술서·소개는 만들지 마).",
@@ -77,5 +78,6 @@ export async function runMatchCheckIfNeeded(): Promise<RunRecord | null> {
     return null;
   }
   console.log(`[matchCheckJob] 매칭률 평가 대상 ${targetCount}건 — Claude 매칭률 조회 배치 시작`);
-  return runManualJob(MATCH_CHECK_JOB_NAME, runClaudeMatchCheck);
+  const todayKey = todayLocalKey();
+  return runManualJob(MATCH_CHECK_JOB_NAME, () => runClaudeMatchCheck(todayKey));
 }

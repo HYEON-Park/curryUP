@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { getImminentThresholdDays } from "../config/skillFileParser.js";
 import type { HiddenJobPosting, JobPosting, PurgedJobHistoryEntry, UserProfile } from "../types.js";
+import { isCollectedToday } from "../utils/date.js";
 import { daysUntilDeadline } from "../utils/deadline.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -127,8 +128,7 @@ export async function restoreJob(id: string): Promise<boolean> {
 // 관리자 페이지: 오늘 수집된 공고만 지워서 재수집 시 깨끗하게 다시 쌓이게 한다.
 export async function deleteTodaysJobPostings(): Promise<void> {
   const jobs = await getJobPostings();
-  const todayKey = new Date().toISOString().slice(0, 10);
-  const remaining = jobs.filter((job) => job.collectedAt.slice(0, 10) !== todayKey);
+  const remaining = jobs.filter((job) => !isCollectedToday(job.collectedAt));
   await saveJobPostings(remaining);
 }
 

@@ -51,6 +51,8 @@ export function DashboardPage() {
   const [recItems, setRecItems] = useState<JobPosting[]>([]);
   const [recSessionId, setRecSessionId] = useState<string | null>(null);
   const [recOpen, setRecOpen] = useState(false);
+  // 당일 추천 공고 id 집합(카드 강조용). 팝업을 닫아도 유지되도록 팝업 노출 여부와 분리해 둔다.
+  const [recommendedIds, setRecommendedIds] = useState<Set<string>>(new Set());
 
   function setPage(n: number) {
     setSearchParams({ page: String(n) }, { replace: true });
@@ -61,6 +63,8 @@ export function DashboardPage() {
   async function maybeShowRecommendations() {
     try {
       const { sessionId, items } = await fetchRecommendations();
+      // 카드 강조는 팝업 노출(세션·dismiss) 조건과 무관하게, 당일 추천 목록이면 항상 반영한다.
+      setRecommendedIds(new Set(items.map((j) => j.id)));
       if (!sessionId || items.length === 0) return;
       if (localStorage.getItem(REC_DISMISS_KEY) === sessionId) return;
       setRecItems(items);
@@ -239,7 +243,9 @@ export function DashboardPage() {
               <Link
                 key={job.id}
                 to={`/jobs/${job.id}`}
-                className={`job-card${isHighlighted(job) ? " job-card-highlight" : ""}`}
+                className={`job-card${isHighlighted(job) ? " job-card-highlight" : ""}${
+                  recommendedIds.has(job.id) ? " job-card-today" : ""
+                }`}
               >
                 <span className="job-source">{sourceLabel(job.sourceUrl)}</span>
                 <button

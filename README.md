@@ -84,7 +84,13 @@ npm start
 ```
 
 > 각 단계는 runLog에 기록되어 관리자 페이지에서 이력을 확인할 수 있다.
+> 단, ③ 매칭률 조회·문서 작성 배치는 **대상이 0건이면 실행 이력을 남기지 않고 건너뛴다.**
+> 배치 로그에 행이 없다면 실패가 아니라 대상 없음이므로, 서버 로그(`건너뜀`)를 함께 확인한다.
 > notify(오전 프로필 알림) 등 스케줄 시각에 서버가 꺼져 있었다면, 다음 기동 시 즉시 catch-up 실행된다.
+>
+> "오늘 수집분" 판정은 `backend/src/utils/date.ts`의 **로컬(KST) 날짜 기준**을 모든 곳이 공유한다.
+> `collectedAt`은 UTC ISO로 저장되므로 앞 10자를 그대로 자르면 00:00~09:00 수집분이 전날로 밀린다.
+> 배치 대상 선별을 headless Claude가 수행하는 경우에도 서버가 계산한 날짜키를 프롬프트로 넘긴다.
 
 ---
 
@@ -99,6 +105,7 @@ npm start
 | `backend/src/scheduler/matchCheckJob.ts` | 수동 UPDATE 3단계. 오늘 수집분 중 매칭표 없는 공고에 Claude CLI(headless)로 매칭률 사전 평가표 작성 |
 | `.claude/skills/write-documents/` | Claude Code가 공고별 매칭표·자기소개서·소개·경력사항을 작성하는 스킬. `writeDocumentsJob`이 headless로 호출 |
 | `backend/src/data/store.ts` | JSON 파일 기반 데이터 레이어. 공고·숨김 공고·프로필·실행 이력 관리 |
+| `backend/src/utils/date.ts` | "오늘 수집분" 판정 단일 규칙. `collectedAt`(UTC ISO)을 로컬 날짜로 환산해 비교 |
 | `backend/src/routes/` | Express REST API. `/api/jobs`, `/api/profile`, `/api/admin/*` |
 | `frontend/src/pages/DashboardPage.tsx` | 공고 카드 그리드. 페이지네이션(URL 기반), 숨김 처리 |
 | `frontend/src/pages/AdminBatchPage.tsx` | 관리자 탭 UI. [대쉬보드 관리] / [배치 모니터링 및 제어] |

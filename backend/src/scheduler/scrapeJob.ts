@@ -10,7 +10,7 @@ import { runRatingCheckNow } from "./ratingCheckJob.js";
 import { runManualJob, runScheduledJob, type RunRecord } from "./runLog.js";
 import { runWriteDocumentsIfNeeded } from "./writeDocumentsJob.js";
 
-const SCHEDULED_HOUR = 22;
+const SCHEDULED_HOUR = 21;
 const SCHEDULED_MINUTE = 0;
 const JOB_NAME = "scrape";
 

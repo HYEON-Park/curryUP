@@ -2,6 +2,7 @@ import { Router } from "express";
 import { getJobPostings, hideJob, toggleFavorite } from "../data/store.js";
 import { getLatestRun } from "../scheduler/runLog.js";
 import type { JobPosting } from "../types.js";
+import { isCollectedToday, todayLocalKey } from "../utils/date.js";
 import { daysUntilDeadline } from "../utils/deadline.js";
 
 export const jobsRouter = Router();
@@ -70,22 +71,17 @@ jobsRouter.get("/all", async (_req, res) => {
 // 주의: 이 라우트는 "/:id"보다 먼저 등록해야 "recommendations"가 id로 매칭되지 않는다.
 jobsRouter.get("/recommendations", async (_req, res) => {
   const jobs = await getJobPostings();
-  const todayKey = new Date().toISOString().slice(0, 10);
   const items = jobs
-    .filter((j) => j.collectedAt.slice(0, 10) === todayKey)
+    .filter((j) => isCollectedToday(j.collectedAt))
     .filter((j) => {
       const overall = matchOverall(j.documents?.matchReport);
       return overall !== null && overall >= 70;
     })
     .sort(compareJobs);
 
-  const now = new Date();
-  const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
-    now.getDate()
-  ).padStart(2, "0")}`;
   const latestCollect = await getLatestRun("collect", "manual");
-  // runLog의 date는 로컬 날짜 기준이므로 localToday와 비교한다.
-  const sessionId = latestCollect && latestCollect.date === localToday ? latestCollect.id : null;
+  // runLog의 date도 같은 로컬 날짜 기준이라 그대로 비교한다.
+  const sessionId = latestCollect && latestCollect.date === todayLocalKey() ? latestCollect.id : null;
 
   res.json({ sessionId, items });
 });

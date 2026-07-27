@@ -22,5 +22,6 @@ backend/src/data/purgedJobHistory.json
 
 # 커밋 금지 (CLAUDE.md 참고)
 .idea/
+.claude/settings.local.json
 backend/run_single_job.mts
 backend/scripts/setup.zip

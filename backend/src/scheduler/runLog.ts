@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { todayLocalKey } from "../utils/date.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RUN_LOG_PATH = path.join(__dirname, "../data/runLog.json");
@@ -35,14 +36,6 @@ export interface RunHistoryPage {
   page: number;
   totalPages: number;
   totalItems: number;
-}
-
-function todayKey(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
 }
 
 async function readLog(): Promise<RunRecord[]> {
@@ -101,7 +94,7 @@ export async function reconcileInterruptedRuns(): Promise<void> {
 
 export async function hasRunToday(jobName: string): Promise<boolean> {
   const log = await readLog();
-  return log.some((record) => record.jobName === jobName && record.date === todayKey());
+  return log.some((record) => record.jobName === jobName && record.date === todayLocalKey());
 }
 
 async function recordRun(jobName: string, trigger: RunTrigger, task: () => Promise<void>): Promise<RunRecord> {
@@ -109,7 +102,7 @@ async function recordRun(jobName: string, trigger: RunTrigger, task: () => Promi
   const startedAt = new Date().toISOString();
   console.log(`[runLog] ${jobName} 처리 시작 (${trigger}): ${startedAt}`);
 
-  let record: RunRecord = { id, jobName, trigger, date: todayKey(), startedAt, finishedAt: null, status: "running" };
+  let record: RunRecord = { id, jobName, trigger, date: todayLocalKey(), startedAt, finishedAt: null, status: "running" };
   await withLog(async (log) => {
     log.push(record);
     await writeLog(log);

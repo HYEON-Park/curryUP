@@ -293,12 +293,23 @@ button[type="submit"] {
 /* 강조: 즐겨찾기 공고 또는 매칭률 종합 70% 이상 */
 .job-card-highlight {
   border-width: 2px;
-  border-color: var(--gold-strong);
-  box-shadow: 0 0 0 1px var(--gold-strong), 0 2px 8px rgba(0, 33, 81, 0.08);
+  border-color: rgb(232, 185, 110);
+  box-shadow: 0 0 0 1px rgb(232, 185, 110), 0 2px 8px rgba(0, 33, 81, 0.08);
 }
 
 .job-card-highlight:hover {
-  box-shadow: 0 0 0 1px var(--gold-strong), 0 4px 12px rgba(0, 33, 81, 0.12);
+  box-shadow: 0 0 0 1px rgb(232, 185, 110), 0 4px 12px rgba(0, 33, 81, 0.12);
+}
+
+/* 당일 추천 공고(오늘 수집 + 매칭률 70%+): 일반 강조보다 눈에 띄게 별도 색으로 */
+.job-card-today {
+  border-width: 2px;
+  border-color: #E5D85C;
+  box-shadow: 0 0 0 1px #E5D85C, 0 2px 8px rgba(0, 33, 81, 0.08);
+}
+
+.job-card-today:hover {
+  box-shadow: 0 0 0 1px #E5D85C, 0 4px 12px rgba(0, 33, 81, 0.12);
 }
 
 .job-card h3 {
