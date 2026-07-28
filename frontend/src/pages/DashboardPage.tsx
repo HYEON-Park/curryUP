@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   deleteJob,
   fetchAllJobs,
@@ -14,6 +14,7 @@ import { RecommendationModal } from "../components/RecommendationModal";
 import type { JobPosting } from "../types";
 import { formatDday } from "../utils/dday";
 import { parseMatchOverall } from "../utils/matchReport";
+import { ensureProfileOrRedirect } from "../utils/profileGuard";
 
 // 추천 공고 팝업을 닫은 업데이트 세션을 기록해, 같은 세션에선 새로고침해도 다시 뜨지 않게 한다.
 const REC_DISMISS_KEY = "recommendationDismissedSession";
@@ -35,6 +36,7 @@ type SearchField = "company" | "title" | "location";
 const PAGE_SIZE = 12; // 백엔드 PAGE_SIZE와 동일 — 검색 중 클라이언트 페이지네이션에 사용
 
 export function DashboardPage() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10) || 1);
   const [items, setItems] = useState<JobPosting[]>([]);
@@ -137,6 +139,8 @@ export function DashboardPage() {
   // 배치가 누락되던 문제를 막기 위해 서버 측으로 옮겼다). 세 배치는 관리자 배치 로그에 각각
   // collect / 평점조회 / 매칭률조회로 기록되며, 여기서는 완료를 순서대로 폴링해 화면만 갱신한다.
   async function handleCollect() {
+    // 프로필이 없으면 수집·매칭·문서 작성 기준이 없어 실행하지 않고 프로필 작성으로 유도한다.
+    if (!(await ensureProfileOrRedirect(navigate))) return;
     setCollecting(true);
     setCollectStatus("수집 중...");
     try {

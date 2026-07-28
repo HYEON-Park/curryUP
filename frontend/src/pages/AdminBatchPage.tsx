@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   fetchFavoriteJobs,
   fetchHiddenJobs,
@@ -13,6 +14,7 @@ import {
   toggleFavorite,
 } from "../api/client";
 import type { HiddenJobPosting, JobPosting, RunRecord } from "../types";
+import { ensureProfileOrRedirect } from "../utils/profileGuard";
 
 const JOB_LABELS: Record<string, string> = {
   scrape: "공고 스크래핑 배치",
@@ -282,6 +284,7 @@ function FavoritesTab() {
 // ─── 배치 모니터링 및 제어 탭 ────────────────────────────────────────────────
 
 function BatchMonitoringTab() {
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<RunRecord[]>([]);
   const [totalPages, setTotalPages] = useState(1);
@@ -332,8 +335,12 @@ function BatchMonitoringTab() {
     key: string,
     label: string,
     action: () => Promise<unknown>,
-    doneMessage = `${label} 완료`
+    doneMessage = `${label} 완료`,
+    // 프로필이 없으면 매칭 기준이 없어 돌릴 수 없는 배치(스크래핑·매칭률·문서 작성)는 실행 전 가드한다.
+    // 오전 프로필 알림 배치(notify)는 프로필과 무관하므로 false로 넘겨 가드에서 제외한다.
+    requireProfile = true
   ) {
+    if (requireProfile && !(await ensureProfileOrRedirect(navigate))) return;
     setPending(key);
     setActionStatus(`${label} 실행 중...`);
     try {
@@ -380,7 +387,9 @@ function BatchMonitoringTab() {
           <div className="admin-control-actions">
             <button
               disabled={pending !== null}
-              onClick={() => handleAction("notify", "즉시 발송하기", runNotifyBatch)}
+              onClick={() =>
+                handleAction("notify", "즉시 발송하기", runNotifyBatch, "즉시 발송하기 완료", false)
+              }
             >
               즉시 발송하기
             </button>

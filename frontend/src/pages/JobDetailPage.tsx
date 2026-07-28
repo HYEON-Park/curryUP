@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { fetchJobDetail, toggleFavorite } from "../api/client";
+import { deleteJob, fetchJobDetail, toggleFavorite } from "../api/client";
 import { MatchReport } from "../components/MatchReport";
 import type { JobPosting } from "../types";
 
@@ -48,6 +48,14 @@ export function JobDetailPage() {
     setJob({ ...job, isFavorite: result.isFavorite });
   }
 
+  // 삭제도 대시보드 카드와 같은 엔드포인트(deleteJob)를 재사용한다. 삭제된 공고는
+  // 더 이상 볼 게 없으므로 목록으로 되돌아간다.
+  async function handleDelete() {
+    if (!job) return;
+    await deleteJob(job.id);
+    navigate(-1);
+  }
+
   if (!job) return <p>불러오는 중...</p>;
 
   const availableTabs = getAvailableTabs(job);
@@ -55,6 +63,9 @@ export function JobDetailPage() {
   return (
     <div className="job-detail">
       <div className="job-detail-header">
+        <button className="job-card-delete" title="삭제" onClick={handleDelete}>
+          ×
+        </button>
         <button
           className={`job-card-favorite${job.isFavorite ? " favorited" : ""}`}
           title={job.isFavorite ? "즐겨찾기 해제" : "즐겨찾기"}

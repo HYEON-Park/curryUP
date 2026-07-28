@@ -100,6 +100,10 @@ button[type="submit"] {
   margin-bottom: 12px;
 }
 
+.required-mark {
+  color: #d33;
+}
+
 .profile-view {
   max-width: 560px;
   margin: 15px auto 0;
@@ -144,6 +148,16 @@ button[type="submit"] {
   display: flex;
   justify-content: flex-end;
   margin-top: 20px;
+}
+
+.profile-actions button {
+  font: inherit;
+  padding: 8px 20px;
+  border-radius: 6px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
 }
 
 .dashboard-toolbar {
@@ -515,6 +529,12 @@ button[type="submit"] {
 }
 
 .job-detail-header .job-card-favorite.favorited {
+  opacity: 1;
+}
+
+/* 삭제 버튼도 카드 내부 절대배치·hover 노출 전제라, 상세 헤더에선 흐름 배치·상시 노출로 되돌린다. */
+.job-detail-header .job-card-delete {
+  position: static;
   opacity: 1;
 }
 

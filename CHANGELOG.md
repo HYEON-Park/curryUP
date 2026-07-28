@@ -2,6 +2,28 @@
 
 프로젝트 주요 변경 이력. 최신이 위. 각 항목에는 수정한 소스 파일명을 함께 기록한다.
 
+## 2026-07-28
+
+### 프로필 미작성 시 배치 실행 차단 + 프로필 필수값 validation
+- 프로필 필수값이 없으면 매칭 기준이 없어 **공고 스크래핑·매칭률 조회·문서 작성 배치**(및 대시보드 UPDATE 수집)를 실행하지 않는다. **오전 프로필 알림 배치(notify)는 프로필과 무관하므로 제외**
+- **필수값 = 희망 직무 카테고리 ≥1 + 경력(년차)**. 저장 여부(`lastProfileUpdate`)가 아니라 이 필수값이 실제로 채워졌는지로 판정 — 단일 함수로 공유(중복 방지): 백엔드 `store.isProfileConfigured`/`hasProfile`, 프런트 `profileGuard.isProfileConfigured`
+- 프런트: 배치 버튼 클릭 시 필수값 미작성이면 `"프로필을 먼저 작성해주세요."` alert → 확인 시 `navigate("/profile")`(SPA 내부 이동)
+- 프로필 편집(`/profile/edit`) 저장 시 필수값 validation 추가 — 미입력이면 저장 차단·안내 문구 표시, **미입력 필드로 포커스 이동**(년차 input focus / 카테고리 fieldset scrollIntoView + 첫 조작 요소 focus), 두 항목 라벨에 `*` 표시. 백엔드 `PUT /api/profile`도 동일 필수값 방어(400)
+- 배치 가드 위치(프런트 우회·자동 스케줄 대비 방어): `collect`·`scrape/run` 라우트 400(NO_PROFILE), 21시 스크래핑 cron(`scrapeTask`)·collect 체인/스케줄 공통 진입점 `runMatchCheckIfNeeded`/`runWriteDocumentsIfNeeded`는 조용히 건너뜀
+- 검증: 백엔드·프런트 `tsc --noEmit` 통과(에러 0)
+- 신규: `frontend/src/utils/profileGuard.ts`
+- 수정: `backend/src/data/store.ts`, `backend/src/routes/collect.ts`, `backend/src/routes/admin.ts`, `backend/src/routes/profile.ts`, `backend/src/scheduler/scrapeJob.ts`, `backend/src/scheduler/matchCheckJob.ts`, `backend/src/scheduler/writeDocumentsJob.ts`, `frontend/src/pages/DashboardPage.tsx`, `frontend/src/pages/AdminBatchPage.tsx`, `frontend/src/pages/ProfileEditPage.tsx`, `frontend/src/App.css`
+
+## 2026-07-27
+
+### 공고 상세 페이지에 즐겨찾기·삭제 버튼 추가 — 대시보드와 통합 관리
+- 상세 페이지 상단에 삭제(`×`) → 즐겨찾기(`☆/★`) → 목록으로 순의 액션 헤더(`.job-detail-header`) 신설
+- 즐겨찾기·삭제 모두 대시보드 카드와 **같은 엔드포인트·같은 필드를 재사용**(별도 저장 위치 만들지 않음):
+  즐겨찾기는 `toggleFavorite`(PATCH `/jobs/:id/favorite`)로 `isFavorite` 토글, 삭제는 `deleteJob`(DELETE `/jobs/:id`). 삭제 후 목록으로 복귀(`navigate(-1)`)
+- 카드 전용 버튼은 카드 내부 절대배치·hover 노출을 전제하므로, 상세 헤더에선 `position: static`·상시 노출로 오버라이드
+- 검증: `tsc --noEmit` 통과(에러 0)
+- 수정: `frontend/src/pages/JobDetailPage.tsx`, `frontend/src/App.css`
+
 ## 2026-07-24
 
 ### "오늘 수집분" 날짜키를 로컬(KST) 기준으로 통일 — 매칭률 배치·추천 팝업 누락 수정

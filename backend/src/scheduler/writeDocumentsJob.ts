@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { getJobPostings } from "../data/store.js";
+import { getJobPostings, hasProfile } from "../data/store.js";
 import { isCollectedToday, todayLocalKey } from "../utils/date.js";
 import { runManualJob, type RunRecord } from "./runLog.js";
 
@@ -80,6 +80,11 @@ function runClaudeWriteDocuments(todayKey: string): Promise<void> {
 // scrape → ratingCheck 이후 무조건 호출된다. 작성 대상이 있으면 반드시 실행하고,
 // 대상이 없으면 실행 이력을 남기지 않고 건너뛴다.
 export async function runWriteDocumentsIfNeeded(): Promise<RunRecord | null> {
+  // 프로필이 없으면 매칭 기준이 없어 문서를 작성할 수 없다(collect 체인·스케줄 공통 진입점).
+  if (!(await hasProfile())) {
+    console.log("[writeDocumentsJob] 프로필 미작성 — 문서 작성 배치 건너뜀");
+    return null;
+  }
   const targetCount = await countTargets();
   if (targetCount === 0) {
     console.log("[writeDocumentsJob] 작성 대상 없음 — 건너뜀");

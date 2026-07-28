@@ -39,6 +39,9 @@ export function ProfileEditPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [initialSnapshot, setInitialSnapshot] = useState<string | null>(null);
+  // 필수값 validation 실패 시 해당 필드로 포커스를 옮기기 위한 참조.
+  const yearsRef = useRef<HTMLInputElement>(null);
+  const categoryRef = useRef<HTMLFieldSetElement>(null);
   const isDirtyRef = useRef(false);
   const dirty = initialSnapshot !== null && initialSnapshot !== snapshotOf(profile);
 
@@ -79,9 +82,23 @@ export function ProfileEditPage() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, []);
 
-  function validate(): string | null {
-    if (profile.yearsOfExperience !== null && profile.yearsOfExperience < 0) {
-      return "경력 연차는 0 이상이어야 합니다.";
+  // 카테고리 fieldset으로 스크롤 후 내부 첫 조작 요소(탭 버튼/체크박스)에 포커스한다.
+  function focusCategory() {
+    categoryRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    categoryRef.current?.querySelector<HTMLElement>("button, input")?.focus();
+  }
+
+  // 필수값: 배치 매칭 기준이 되는 희망 직무 카테고리·경력 년차. (백엔드 PUT·배치 가드와 동일 기준)
+  // 실패 시 안내 문구(message)와 해당 필드로 포커스를 옮기는 focus를 함께 돌려준다.
+  function validate(): { message: string; focus: () => void } | null {
+    if (profile.yearsOfExperience === null) {
+      return { message: "경력 (년차)는 필수 입력 항목입니다.", focus: () => yearsRef.current?.focus() };
+    }
+    if (profile.yearsOfExperience < 0) {
+      return { message: "경력 연차는 0 이상이어야 합니다.", focus: () => yearsRef.current?.focus() };
+    }
+    if (profile.desiredRoleCategories.length === 0) {
+      return { message: "희망 직무 카테고리를 1개 이상 선택해주세요.", focus: focusCategory };
     }
     return null;
   }
@@ -90,7 +107,8 @@ export function ProfileEditPage() {
     e.preventDefault();
     const validationError = validate();
     if (validationError) {
-      setError(validationError);
+      setError(validationError.message);
+      validationError.focus();
       return;
     }
     setError(null);
@@ -114,8 +132,9 @@ export function ProfileEditPage() {
       <h2>프로필 수정</h2>
 
       <label>
-        경력 (년차)
+        경력 (년차) <span className="required-mark">*</span>
         <input
+          ref={yearsRef}
           type="number"
           min={0}
           value={profile.yearsOfExperience ?? ""}
@@ -245,8 +264,8 @@ export function ProfileEditPage() {
         </label>
       </fieldset>
 
-      <fieldset>
-        <legend>희망 직무 카테고리</legend>
+      <fieldset ref={categoryRef}>
+        <legend>희망 직무 카테고리 <span className="required-mark">*</span></legend>
         <JobCategoryPicker
           selected={profile.desiredRoleCategories}
           onChange={(desiredRoleCategories) => setProfile({ ...profile, desiredRoleCategories })}

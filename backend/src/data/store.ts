@@ -46,6 +46,22 @@ export async function saveProfile(profile: UserProfile): Promise<UserProfile> {
   return updated;
 }
 
+// 프로필 작성 여부 판정 — 프런트 배치 가드·프로필 저장 검증이 공유하는 단일 규칙.
+// 매칭 기준이 되는 필수값(희망 직무 카테고리 ≥1, 경력 년차)이 실제로 채워졌는지로 판정한다.
+// (저장 여부 lastProfileUpdate만으로는 빈 프로필도 통과하므로 필수값을 직접 본다.)
+export function isProfileConfigured(profile: UserProfile): boolean {
+  return (
+    profile.yearsOfExperience !== null &&
+    Array.isArray(profile.desiredRoleCategories) &&
+    profile.desiredRoleCategories.length > 0
+  );
+}
+
+// 프로필이 없으면 매칭 기준이 없어 스크래핑·매칭률·문서 작성 배치를 돌릴 수 없다.
+export async function hasProfile(): Promise<boolean> {
+  return isProfileConfigured(await getProfile());
+}
+
 export async function getJobPostings(): Promise<JobPosting[]> {
   return readJson(JOBS_PATH, []);
 }

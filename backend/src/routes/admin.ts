@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getHiddenJobs, getJobPostings, permanentDeleteAllHiddenJobs, permanentDeleteHiddenJobs, restoreJob } from "../data/store.js";
+import { getHiddenJobs, getJobPostings, hasProfile, permanentDeleteAllHiddenJobs, permanentDeleteHiddenJobs, restoreJob } from "../data/store.js";
 import { MATCH_CHECK_JOB_NAME, runMatchCheckIfNeeded } from "../scheduler/matchCheckJob.js";
 import { runNotifyNow } from "../scheduler/notifyJob.js";
 import { RATING_CHECK_JOB_NAME, runRatingCheckNow } from "../scheduler/ratingCheckJob.js";
@@ -15,6 +15,11 @@ adminRouter.get("/runs", async (req, res) => {
 });
 
 adminRouter.post("/scrape/run", async (req, res) => {
+  // 프로필이 없으면 초기화(삭제)까지 막아야 하므로 재수집 진입 전에 차단한다(프런트도 동일 가드).
+  if (!(await hasProfile())) {
+    res.status(400).json({ error: "NO_PROFILE" });
+    return;
+  }
   const scope = req.query.scope === "all" ? "all" : "today";
   res.json(await runScrapeNow(scope));
 });

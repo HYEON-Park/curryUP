@@ -3,6 +3,7 @@ import {
   deleteExpiredJobPostings,
   deleteImminentJobPostings,
   deleteTodaysJobPostings,
+  hasProfile,
   saveJobPostings,
 } from "../data/store.js";
 import { runScrapeAndMatch } from "../pipeline/runScrapeAndMatch.js";
@@ -15,6 +16,11 @@ const SCHEDULED_MINUTE = 0;
 const JOB_NAME = "scrape";
 
 async function scrapeTask(): Promise<void> {
+  // 프로필이 없으면 매칭 기준이 없어 스크래핑·매칭·문서 작성을 건너뛴다(오전 알림 배치는 대상 아님).
+  if (!(await hasProfile())) {
+    console.log("[scrapeJob] 프로필 미작성 — 스크래핑 배치 건너뜀");
+    return;
+  }
   await deleteExpiredJobPostings();
   // D-N 경계는 날짜 단위로만 바뀌므로, 서버 기동 시 정리에 더해 매일 배치에서도 한 번 더 정리한다
   // (서버가 며칠씩 재시작 없이 떠 있어도 마감임박 공고가 계속 걸러지도록).

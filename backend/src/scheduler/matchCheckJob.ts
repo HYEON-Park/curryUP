@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { getJobPostings } from "../data/store.js";
+import { getJobPostings, hasProfile } from "../data/store.js";
 import { isCollectedToday, todayLocalKey } from "../utils/date.js";
 import { runManualJob, type RunRecord } from "./runLog.js";
 
@@ -72,6 +72,11 @@ function runClaudeMatchCheck(todayKey: string): Promise<void> {
 // 대시보드 [UPDATE] 흐름에서 수집 → 평점 조회 이후 마지막 단계로 호출된다.
 // 매칭률 미평가 신규 공고가 있으면 실행하고, 없으면 실행 이력을 남기지 않고 건너뛴다.
 export async function runMatchCheckIfNeeded(): Promise<RunRecord | null> {
+  // 프로필이 없으면 매칭 기준이 없어 매칭률 평가를 돌릴 수 없다(collect 체인·스케줄 공통 진입점).
+  if (!(await hasProfile())) {
+    console.log("[matchCheckJob] 프로필 미작성 — 매칭률 조회 배치 건너뜀");
+    return null;
+  }
   const targetCount = await countTargets();
   if (targetCount === 0) {
     console.log("[matchCheckJob] 매칭률 평가 대상 없음 — 건너뜀");
