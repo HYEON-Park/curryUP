@@ -41,8 +41,8 @@
   --gold: var(--accent);
   --gold-strong: var(--accent);
   --social-bg: var(--surface-2);
-  --accent-bg: oklch(0.32 0.08 265 / 0.1);
-  --accent-border: oklch(0.32 0.08 265 / 0.4);
+  --accent-bg: oklch(0.78 0.15 70 / 0.16);
+  --accent-border: oklch(0.78 0.15 70 / 0.45);
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
