@@ -66,12 +66,22 @@ Start-Process -FilePath "node" -ArgumentList "--import","tsx","src/server.ts" `
 
 아래 파일은 경력·이력 등 개인 데이터를 포함하므로 절대 commit·push하지 않는다.
 
+레거시 단일 파일(멀티테넌트 이전):
 - `backend/src/data/userProfile.json`
 - `backend/src/data/jobPostings.json`
 - `backend/src/data/hiddenJobPostings.json`
 - `backend/src/data/runLog.json`
 - `backend/src/data/polished/` (폴더 전체 — 다듬은 자소서 등 개인 데이터 포함)
 - `backend/src/data/purgedJobHistory.json`
+
+유저별 계정·격리 파일(멀티테넌트):
+- `backend/src/data/users.json` (이메일·비밀번호 해시)
+- `backend/src/data/profiles/` (폴더 전체)
+- `backend/src/data/jobPostings/` (폴더 전체)
+- `backend/src/data/hiddenJobPostings/` (폴더 전체)
+- `backend/src/data/purgedJobHistory/` (폴더 전체)
+- `backend/src/data/runLog/` (폴더 전체)
+- `backend/.env` (JWT_SECRET)
 
 아래 파일도 절대 commit·push하지 않는다.
 

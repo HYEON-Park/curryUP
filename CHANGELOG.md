@@ -4,6 +4,19 @@
 
 ## 2026-07-28
 
+### 이메일 로그인 + 유저별 파일 격리(멀티테넌트) 전환
+- 단일 유저 앱을 이메일/비밀번호 로그인 기반 멀티테넌트로 전환. DB 없이 파일 저장소만 확장.
+- **이메일 인증(링크 방식)**: 가입 시 인증 토큰 생성 → 메일 발송(`nodemailer`), 인증 전 로그인 차단(403). 인증 링크(`GET /api/auth/verify`) 클릭 시 완료 후 `/login?verified=1`로 리다이렉트. 재발송 `POST /api/auth/resend`. 인증 링크 base URL은 **LAN IP**(`utils/network.getBaseUrl`, 예: `http://192.168.110.160:4000`)로 생성해 같은 네트워크의 폰에서도 열림. SMTP는 `.env`(SMTP_HOST/PORT/SECURE/USER/PASS/MAIL_FROM); 미설정 시 인증 링크를 응답(devLink)·서버 로그로 노출하는 개발 폴백. `users.json`에 `emailVerified`·`verifyToken`·`verifyExpires` 필드 추가. JWT 시크릿은 ESM import 순서 때문에 lazy 로드로 수정(.env 반영). 신규: `src/auth/mailer.ts`, `src/utils/network.ts`.
+- **인증**: `POST /api/auth/signup`(bcryptjs cost 10, 비번 8~64자)·`/login`(JWT 발급)·`GET /me`(hasProfile 반환). `authMiddleware`가 Bearer 토큰 검증 후 `req.user={userId,email}` 주입. JWT_SECRET은 `backend/.env`.
+- **유저별 파일 격리**: `backend/src/data/` 아래 `profiles/`·`jobPostings/`·`hiddenJobPostings/`·`purgedJobHistory/`·`runLog/`에 `{userId}.json` 개별 파일로 분리(동시 쓰기 충돌 원천 차단). store.ts의 모든 get/save가 `userId` 인자를 받도록 리팩터, 서버 기동 시 폴더 자동 생성.
+- **배치 대상 = "가장 최근 로그인 + 프로필 충족" 유저 1명**(`getBatchUserId`). 전체 유저 루프 안 함(로컬 headless Claude CLI 과부하 방지). 스케줄 cron(21시 스크래핑·09:30 알림)은 이 유저 기준, 수동 트리거(UPDATE·관리자 버튼)는 로그인 유저 본인 기준. 매칭률·문서작성 프롬프트의 파일 경로도 유저별로 치환.
+- **hasProfile 판정**은 오늘 만든 `isProfileConfigured`(필수값=희망직무≥1+경력년차) 재사용.
+- **프런트**: 토큰 localStorage 저장, 모든 API에 Authorization 헤더 주입(401 시 자동 로그아웃), `AuthProvider`가 `/me`로 인증·프로필 상태 확인. 로그인/회원가입 페이지 신설, 라우트 가드(미인증→`/login`, 인증+프로필없음→`/profile/setup` 강제), 네비에 이메일·로그아웃.
+- 기동 시 "프로필 설정 필요" OS 알림(server.ts) 제거(멀티테넌트에서 전역 프로필 개념 소멸). tsx watch 제외에 `src/data/**/*.json` 추가(유저별 파일 쓰기마다 서버 재시작 방지). `.gitignore`·CLAUDE.md 개인정보 목록에 유저별 폴더·`.env` 추가.
+- 검증: 백엔드·프런트 `tsc --noEmit` 통과(에러 0). 실제 SMTP(Gmail 앱 비밀번호) 연결·발송 확인. 기존 단일 파일 실데이터 → seed 계정(`hyeonpaaark@gmail.com`) 마이그레이션 완료(공고 88건 등, 레거시 원본은 백업 보존). 배치 시퀀스(UPDATE→평점→매칭률→문서작성) 실행 검증: 유저별 파일 기록 정상, 21시 스케줄 cron 자동 실행 확인(문서작성은 headless `claude` CLI 일시 오류로 수동 1회 실패·스케줄 1회 성공).
+- 신규(백엔드): `src/auth/jwt.ts`, `src/routes/auth.ts`. 신규(프런트): `src/auth/AuthContext.tsx`, `src/pages/LoginPage.tsx`.
+- 수정(백엔드): `src/data/store.ts`, `src/scheduler/runLog.ts`·`scrapeJob.ts`·`notifyJob.ts`·`ratingCheckJob.ts`·`matchCheckJob.ts`·`writeDocumentsJob.ts`, `src/pipeline/runScrapeAndMatch.ts`·`updateCompanyRatings.ts`, `src/routes/profile.ts`·`jobs.ts`·`collect.ts`·`admin.ts`, `src/server.ts`, `package.json`. 수정(프런트): `src/api/client.ts`, `src/App.tsx`, `src/main.tsx`, `src/pages/ProfileEditPage.tsx`, `src/App.css`.
+
 ### 프로필 미작성 시 배치 실행 차단 + 프로필 필수값 validation
 - 프로필 필수값이 없으면 매칭 기준이 없어 **공고 스크래핑·매칭률 조회·문서 작성 배치**(및 대시보드 UPDATE 수집)를 실행하지 않는다. **오전 프로필 알림 배치(notify)는 프로필과 무관하므로 제외**
 - **필수값 = 희망 직무 카테고리 ≥1 + 경력(년차)**. 저장 여부(`lastProfileUpdate`)가 아니라 이 필수값이 실제로 채워졌는지로 판정 — 단일 함수로 공유(중복 방지): 백엔드 `store.isProfileConfigured`/`hasProfile`, 프런트 `profileGuard.isProfileConfigured`

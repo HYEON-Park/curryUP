@@ -12,13 +12,21 @@ dist/
 .claude/skills/write-documents/*
 !.claude/skills/write-documents/SKILL.md
 
-# 개인 데이터 — 커밋하지 않음
+# 개인 데이터 — 커밋하지 않음 (단일 파일: 멀티테넌트 이전 레거시)
 backend/src/data/userProfile.json
 backend/src/data/jobPostings.json
 backend/src/data/hiddenJobPostings.json
 backend/src/data/runLog.json
 backend/src/data/polished/
 backend/src/data/purgedJobHistory.json
+
+# 개인 데이터 — 유저별 계정·격리 파일 (커밋 금지)
+backend/src/data/users.json
+backend/src/data/profiles/
+backend/src/data/jobPostings/
+backend/src/data/hiddenJobPostings/
+backend/src/data/purgedJobHistory/
+backend/src/data/runLog/
 
 # 커밋 금지 (CLAUDE.md 참고)
 .idea/
