@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { authMiddleware } from "../auth/jwt.js";
 import { getJobPostings, hideJob, toggleFavorite } from "../data/store.js";
 import { getLatestRun } from "../scheduler/runLog.js";
 import type { JobPosting } from "../types.js";
@@ -6,6 +7,7 @@ import { isCollectedToday, todayLocalKey } from "../utils/date.js";
 import { daysUntilDeadline } from "../utils/deadline.js";
 
 export const jobsRouter = Router();
+jobsRouter.use(authMiddleware);
 const PAGE_SIZE = 12;
 
 // 매칭표에서 "종합 매칭률: N%" 값을 추출한다. (프런트 utils/matchReport.ts와 동일 규칙)
@@ -45,7 +47,7 @@ function compareJobs(a: JobPosting, b: JobPosting): number {
 // 전담하므로, 여기서는 순수하게 저장된 목록을 읽어 응답하기만 한다.
 jobsRouter.get("/", async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
-  const allJobs = await getJobPostings();
+  const allJobs = await getJobPostings(req.user!.userId);
 
   const sorted = [...allJobs].sort(compareJobs);
   const start = (page - 1) * PAGE_SIZE;
@@ -59,8 +61,8 @@ jobsRouter.get("/", async (req, res) => {
 
 // 대시보드 다중 조건 검색(회사명/제목/지역)은 전체 페이지를 대상으로 해야 하므로,
 // 클라이언트가 검색을 활성화할 때 페이지네이션 없이 전체 목록을 한 번에 내려준다.
-jobsRouter.get("/all", async (_req, res) => {
-  const allJobs = await getJobPostings();
+jobsRouter.get("/all", async (req, res) => {
+  const allJobs = await getJobPostings(req.user!.userId);
   const sorted = [...allJobs].sort(compareJobs);
   res.json({ items: sorted });
 });
@@ -69,8 +71,9 @@ jobsRouter.get("/all", async (_req, res) => {
 // sessionId: 이번 업데이트 세션 식별자(= 오늘 완료된 가장 최근 수동 collect 실행 id). 팝업 중복 노출
 // 방지를 위해 프런트가 이 값을 dismiss 플래그로 사용한다. 오늘 수동 수집이 없으면 null(팝업 미노출).
 // 주의: 이 라우트는 "/:id"보다 먼저 등록해야 "recommendations"가 id로 매칭되지 않는다.
-jobsRouter.get("/recommendations", async (_req, res) => {
-  const jobs = await getJobPostings();
+jobsRouter.get("/recommendations", async (req, res) => {
+  const userId = req.user!.userId;
+  const jobs = await getJobPostings(userId);
   const items = jobs
     .filter((j) => isCollectedToday(j.collectedAt))
     .filter((j) => {
@@ -79,7 +82,7 @@ jobsRouter.get("/recommendations", async (_req, res) => {
     })
     .sort(compareJobs);
 
-  const latestCollect = await getLatestRun("collect", "manual");
+  const latestCollect = await getLatestRun(userId, "collect", "manual");
   // runLog의 date도 같은 로컬 날짜 기준이라 그대로 비교한다.
   const sessionId = latestCollect && latestCollect.date === todayLocalKey() ? latestCollect.id : null;
 
@@ -87,7 +90,7 @@ jobsRouter.get("/recommendations", async (_req, res) => {
 });
 
 jobsRouter.get("/:id", async (req, res) => {
-  const jobs = await getJobPostings();
+  const jobs = await getJobPostings(req.user!.userId);
   const job = jobs.find((j) => j.id === req.params.id);
   if (!job) {
     res.status(404).json({ error: "Job not found" });
@@ -97,7 +100,7 @@ jobsRouter.get("/:id", async (req, res) => {
 });
 
 jobsRouter.patch("/:id/favorite", async (req, res) => {
-  const result = await toggleFavorite(req.params.id);
+  const result = await toggleFavorite(req.user!.userId, req.params.id);
   if (result === null) {
     res.status(404).json({ error: "Job not found" });
     return;
@@ -106,7 +109,7 @@ jobsRouter.patch("/:id/favorite", async (req, res) => {
 });
 
 jobsRouter.delete("/:id", async (req, res) => {
-  const success = await hideJob(req.params.id);
+  const success = await hideJob(req.user!.userId, req.params.id);
   if (!success) {
     res.status(404).json({ error: "Job not found" });
     return;

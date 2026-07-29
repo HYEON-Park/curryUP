@@ -9,9 +9,10 @@ export interface RatingProgress {
 
 // 같은 회사가 여러 공고에 걸쳐 있어도 잡플래닛 조회는 회사당 한 번만 수행한다.
 export async function updateCompanyRatings(
+  userId: string,
   onProgress?: (progress: RatingProgress) => void
 ): Promise<{ updated: number; failed: number }> {
-  const jobs = await getJobPostings();
+  const jobs = await getJobPostings(userId);
   const regionByCompany = new Map<string, string>();
   for (const job of jobs) {
     if (!regionByCompany.has(job.company)) regionByCompany.set(job.company, job.location);
@@ -30,7 +31,7 @@ export async function updateCompanyRatings(
       }
     }
     result.rating ? updated++ : failed++;
-    await saveJobPostings(jobs);
+    await saveJobPostings(userId, jobs);
   });
   onProgress?.({ total: lookups.length, completed: lookups.length, currentTitle: null });
 

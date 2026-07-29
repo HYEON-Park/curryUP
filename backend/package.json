@@ -4,23 +4,29 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "cross-env NODE_ENV=development tsx watch --exclude \"../frontend/**\" --exclude \"src/data/*.json\" src/server.ts",
+    "dev": "cross-env NODE_ENV=development tsx watch --exclude \"../frontend/**\" --exclude \"src/data/*.json\" --exclude \"src/data/**/*.json\" src/server.ts",
     "build": "tsc && npm --prefix ../frontend run build",
     "start": "cross-env NODE_ENV=production node dist/server.js"
   },
   "dependencies": {
     "axios": "^1.7.9",
+    "bcryptjs": "^3.0.3",
     "cheerio": "^1.0.0",
     "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.3",
     "node-cron": "^3.0.3",
     "node-notifier": "^10.0.1",
+    "nodemailer": "^9.0.3",
     "playwright": "^1.61.1"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.10.2",
     "@types/node-cron": "^3.0.11",
     "@types/node-notifier": "^8.0.5",
+    "@types/nodemailer": "^8.0.1",
     "cross-env": "^7.0.3",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",

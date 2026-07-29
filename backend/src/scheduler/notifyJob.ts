@@ -1,5 +1,5 @@
 import cron from "node-cron";
-import { getProfile } from "../data/store.js";
+import { getBatchUserId, getProfile } from "../data/store.js";
 import { notifyWithLink } from "../notify/osNotifier.js";
 import { catchUpIfMissed, runManualJob, runScheduledJob, type RunRecord } from "./runLog.js";
 
@@ -8,8 +8,8 @@ const SCHEDULED_MINUTE = 30;
 const PORT = process.env.PORT || 4000;
 const JOB_NAME = "notify";
 
-async function notifyTask(force = false): Promise<void> {
-  const profile = await getProfile();
+async function notifyTask(userId: string, force = false): Promise<void> {
+  const profile = await getProfile(userId);
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
@@ -26,17 +26,24 @@ async function notifyTask(force = false): Promise<void> {
   });
 }
 
-// 매일 09:30, 당일 00:00~09:29 사이 프로필을 수정하지 않았다면 알림 (PRD 3.3)
+// 매일 09:30, 당일 00:00~09:29 사이 프로필을 수정하지 않았다면 알림.
+// 대상은 "가장 최근 로그인 + 프로필 충족" 유저 1명(getBatchUserId). 대상이 없으면 건너뛴다.
 export function startNotifyJob(): void {
-  cron.schedule(`${SCHEDULED_MINUTE} ${SCHEDULED_HOUR} * * *`, () => runScheduledJob(JOB_NAME, notifyTask));
+  cron.schedule(`${SCHEDULED_MINUTE} ${SCHEDULED_HOUR} * * *`, async () => {
+    const userId = await getBatchUserId();
+    if (!userId) return;
+    await runScheduledJob(userId, JOB_NAME, () => notifyTask(userId));
+  });
 }
 
 // 백엔드가 09:30 이후에 켜졌고 당일 알림 처리 기록이 없다면 즉시 따라잡는다.
-export function catchUpNotifyJob(): Promise<void> {
-  return catchUpIfMissed(JOB_NAME, SCHEDULED_HOUR, SCHEDULED_MINUTE, notifyTask);
+export async function catchUpNotifyJob(): Promise<void> {
+  const userId = await getBatchUserId();
+  if (!userId) return;
+  await catchUpIfMissed(userId, JOB_NAME, SCHEDULED_HOUR, SCHEDULED_MINUTE, () => notifyTask(userId));
 }
 
-// 관리자 페이지: "오늘 업데이트했는지" 체크를 무시하고 즉시 발송한다.
-export function runNotifyNow(): Promise<RunRecord> {
-  return runManualJob(JOB_NAME, () => notifyTask(true));
+// 관리자 페이지: "오늘 업데이트했는지" 체크를 무시하고 즉시 발송한다(로그인 유저 기준).
+export function runNotifyNow(userId: string): Promise<RunRecord> {
+  return runManualJob(userId, JOB_NAME, () => notifyTask(userId, true));
 }

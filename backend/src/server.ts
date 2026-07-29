@@ -3,9 +3,9 @@ import { fileURLToPath } from "node:url";
 import http from "node:http";
 import express from "express";
 import { reloadSkillFile } from "./config/skillFileParser.js";
-import { deleteImminentJobPostings, getProfile } from "./data/store.js";
-import { notifyWithLink } from "./notify/osNotifier.js";
+import { deleteImminentJobPostings, getBatchUserId } from "./data/store.js";
 import { adminRouter } from "./routes/admin.js";
+import { authRouter } from "./routes/auth.js";
 import { collectRouter } from "./routes/collect.js";
 import { profileRouter } from "./routes/profile.js";
 import { jobsRouter } from "./routes/jobs.js";
@@ -30,6 +30,7 @@ const isProd = process.env.NODE_ENV === "production";
 
 app.use(express.json());
 
+app.use("/api/auth", authRouter);
 app.use("/api/profile", profileRouter);
 app.use("/api/jobs", jobsRouter);
 app.use("/api/collect", collectRouter);
@@ -60,21 +61,13 @@ if (isProd) {
 server.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
 
-  // 직전 종료가 비정상적이었다면 "running"으로 멈춰있는 이력을 failed로 정리한다.
+  // 직전 종료가 비정상적이었다면 "running"으로 멈춰있는 이력을 failed로 정리한다(전체 유저).
   reconcileInterruptedRuns().catch((error) => console.error("[reconcileInterruptedRuns] failed:", error));
 
-  // 기동 시점에 오늘·내일 마감 공고를 즉시 정리한다.
-  deleteImminentJobPostings().catch((error) => console.error("[deleteImminentJobPostings] failed:", error));
+  // 기동 시점에 오늘·내일 마감 공고를 즉시 정리한다(배치 대상 유저 1명 기준).
+  getBatchUserId()
+    .then((userId) => (userId ? deleteImminentJobPostings(userId) : undefined))
+    .catch((error) => console.error("[deleteImminentJobPostings] failed:", error));
 
   catchUpNotifyJob().catch((error) => console.error("[catchUpNotifyJob] failed:", error));
-
-  getProfile().then((profile) => {
-    if (profile.lastProfileUpdate === null) {
-      notifyWithLink({
-        title: "프로필 설정 필요",
-        message: "정확한 매칭을 위해 프로필 작성이 필요합니다.",
-        url: `http://localhost:${PORT}/profile`,
-      });
-    }
-  });
 });

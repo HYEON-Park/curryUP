@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { authMiddleware } from "../auth/jwt.js";
 import { hasProfile } from "../data/store.js";
 import { runScrapeAndMatch } from "../pipeline/runScrapeAndMatch.js";
 import { runMatchCheckIfNeeded } from "../scheduler/matchCheckJob.js";
@@ -6,19 +7,21 @@ import { runRatingCheckNow } from "../scheduler/ratingCheckJob.js";
 import { runManualJob } from "../scheduler/runLog.js";
 
 export const collectRouter = Router();
+collectRouter.use(authMiddleware);
 const JOB_NAME = "collect";
 
 // 문서 생성은 별도 문서 작성 배치가 담당한다. 여기서 동시에 트리거하면 배치와 동시에
 // jobPostings.json을 써서 데이터가 덮어써질 수 있어 분리해둔다.
-collectRouter.post("/", async (_req, res) => {
+collectRouter.post("/", async (req, res) => {
+  const userId = req.user!.userId;
   // 프로필이 없으면 매칭 기준이 없어 수집·매칭률·문서 작성을 돌릴 수 없다(프런트도 동일 가드).
-  if (!(await hasProfile())) {
+  if (!(await hasProfile(userId))) {
     res.status(400).json({ error: "NO_PROFILE" });
     return;
   }
   let result: Awaited<ReturnType<typeof runScrapeAndMatch>> | undefined;
-  const record = await runManualJob(JOB_NAME, async () => {
-    result = await runScrapeAndMatch();
+  const record = await runManualJob(userId, JOB_NAME, async () => {
+    result = await runScrapeAndMatch(userId);
   });
   if (record.status === "failed") {
     console.error("[manual collect] failed:", record.error);
@@ -33,8 +36,8 @@ collectRouter.post("/", async (_req, res) => {
   // 평점 조회가 끝난 뒤(평점을 참고해) 당일 수집분의 매칭률 평가표를 마지막 단계로 작성한다.
   // 두 배치 모두 수 분 걸릴 수 있어 응답은 기다리지 않고 시작만 시킨다
   // (프런트는 rating-check/status → match-check/status 순으로 완료를 폴링한다).
-  runRatingCheckNow()
-    .then(() => runMatchCheckIfNeeded())
+  runRatingCheckNow(userId)
+    .then(() => runMatchCheckIfNeeded(userId))
     .catch((error) => console.error("[manual collect] rating/match check failed:", error));
 
   res.json(result);

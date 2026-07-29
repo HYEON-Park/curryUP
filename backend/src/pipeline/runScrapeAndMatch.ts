@@ -17,7 +17,7 @@ function idFor(sourceUrl: string): string {
   return createHash("sha1").update(sourceUrl).digest("hex").slice(0, 16);
 }
 
-export async function runScrapeAndMatch(): Promise<{
+export async function runScrapeAndMatch(userId: string): Promise<{
   collected: number;
   newlyMatched: number;
   skillFileWarning?: string;
@@ -26,14 +26,14 @@ export async function runScrapeAndMatch(): Promise<{
   const reloadResult = await reloadSkillFile("UPDATE");
   const urls = await getCrawlTargetUrls();
   const thresholdDays = await getImminentThresholdDays();
-  const profile = await getProfile();
-  const existingJobs = await getJobPostings();
+  const profile = await getProfile(userId);
+  const existingJobs = await getJobPostings(userId);
   const existingById = new Map(existingJobs.map((job) => [job.id, job]));
   const knownSourceUrls = new Set(existingJobs.map((job) => job.sourceUrl));
   // 사용자가 영구 삭제한 공고(기업명+제목 일치)는 재수집하지 않는다.
-  const purgedKeys = new Set((await getPurgedJobHistory()).map(purgedJobKey));
+  const purgedKeys = new Set((await getPurgedJobHistory(userId)).map(purgedJobKey));
   // 숨김 처리된 공고도 대시보드에 다시 올리지 않는다 (복원은 관리자 페이지에서만).
-  const hiddenJobs = await getHiddenJobs();
+  const hiddenJobs = await getHiddenJobs(userId);
   const hiddenIds = new Set(hiddenJobs.map((job) => job.id));
   for (const job of hiddenJobs) knownSourceUrls.add(job.sourceUrl);
 
@@ -71,7 +71,7 @@ export async function runScrapeAndMatch(): Promise<{
   }
 
   if (purgedSkipped > 0) console.log(`[scrape] 영구 삭제 이력 일치로 ${purgedSkipped}건 수집 제외`);
-  await saveJobPostings([...existingById.values()]);
+  await saveJobPostings(userId, [...existingById.values()]);
   return {
     collected,
     newlyMatched,

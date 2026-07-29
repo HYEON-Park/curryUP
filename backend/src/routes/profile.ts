@@ -1,10 +1,12 @@
 import { Router } from "express";
+import { authMiddleware } from "../auth/jwt.js";
 import { getProfile, isProfileConfigured, saveProfile } from "../data/store.js";
 
 export const profileRouter = Router();
+profileRouter.use(authMiddleware);
 
-profileRouter.get("/", async (_req, res) => {
-  res.json(await getProfile());
+profileRouter.get("/", async (req, res) => {
+  res.json(await getProfile(req.user!.userId));
 });
 
 profileRouter.put("/", async (req, res) => {
@@ -13,6 +15,6 @@ profileRouter.put("/", async (req, res) => {
     res.status(400).json({ error: "필수 항목(희망 직무 카테고리, 경력 년차)을 입력해주세요." });
     return;
   }
-  const updated = await saveProfile(req.body);
+  const updated = await saveProfile(req.user!.userId, req.body);
   res.json(updated);
 });
