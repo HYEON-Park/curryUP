@@ -1463,13 +1463,14 @@ button[type="submit"] {
   font-size: 0.9rem;
 }
 
+/* ── 로그인/회원가입 (리디자인) — 앱 배경 위 surface 카드, 라이트/다크 대응 */
 .auth-page {
-  min-height: 100vh;
+  min-height: 100svh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: var(--navy);
+  background: var(--bg);
 }
 
 .auth-card {
@@ -1479,22 +1480,28 @@ button[type="submit"] {
   flex-direction: column;
   gap: 14px;
   padding: 32px 28px;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
 }
 
 .auth-title {
   margin: 0;
   text-align: center;
-  color: var(--navy);
-  font-size: 1.8rem;
+  font-family: var(--wordmark);
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--text);
+  font-size: 2.2rem;
+  /* 폰트가 Bold(700)까지만 있어, 외곽선으로 글리프를 물리적으로 더 굵게 만든다. */
+  -webkit-text-stroke: 1.5px currentColor;
 }
 
 .auth-subtitle {
   margin: 0 0 8px;
   text-align: center;
-  color: #666;
+  color: var(--muted);
   font-size: 0.95rem;
 }
 
@@ -1504,14 +1511,12 @@ button[type="submit"] {
   gap: 6px;
   font-size: 0.9rem;
   font-weight: 600;
-  color: var(--navy);
+  color: var(--text);
 }
 
 .auth-label input {
-  font: inherit;
+  margin-top: 0;
   padding: 10px 12px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
 }
 
 .auth-error {
@@ -1522,12 +1527,12 @@ button[type="submit"] {
 
 .auth-submit {
   font: inherit;
-  font-weight: 700;
+  font-weight: 800;
   padding: 11px;
   border: none;
-  border-radius: 6px;
+  border-radius: 9px;
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-ink);
   cursor: pointer;
 }
 
@@ -1549,18 +1554,18 @@ button[type="submit"] {
   margin: 0;
   padding: 8px 10px;
   background: var(--accent-bg);
-  color: var(--accent);
-  border-radius: 6px;
+  color: var(--text);
+  border-radius: 8px;
   font-size: 0.88rem;
 }
 
 .auth-devlink {
   margin: 0;
   padding: 8px 10px;
-  background: #fff7e6;
-  border: 1px dashed #e0a800;
-  border-radius: 6px;
+  background: var(--accent-bg);
+  border: 1px dashed var(--accent-border);
+  border-radius: 8px;
   font-size: 0.82rem;
-  color: #7a5b00;
+  color: var(--text);
   word-break: break-all;
 }

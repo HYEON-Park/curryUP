@@ -111,7 +111,9 @@ export function LoginPage() {
   return (
     <div className="auth-page">
       <form className="auth-card" onSubmit={handleSubmit}>
-        <h1 className="auth-title">curryUP</h1>
+        <h1 className="auth-title">
+          curry<span className="wordmark-up">UP</span>
+        </h1>
         <p className="auth-subtitle">{mode === "login" ? "이메일로 로그인" : "이메일로 회원가입"}</p>
 
         {verified === "1" && <p className="auth-notice">이메일 인증이 완료되었습니다. 로그인해주세요.</p>}
