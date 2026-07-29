@@ -1,33 +1,77 @@
-nav {
+/* ── TopBar (전 화면 공통 셸 상단, 56px) ───────────────────────── */
+.topbar {
   display: flex;
-  gap: 24px;
   align-items: center;
-  padding: 18px 24px;
-  background: var(--navy);
-  border-bottom: 1px solid var(--navy-soft);
+  gap: 22px;
+  height: 56px;
+  padding: 0 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
 }
 
-nav a {
-  color: #fff;
+.wordmark {
+  font-family: var(--wordmark);
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: -0.4px;
+  color: var(--text);
+}
+
+.wordmark-up {
+  color: var(--accent);
+}
+
+.topbar-tabs {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+}
+
+.topbar-tabs a {
+  color: var(--muted);
   text-decoration: none;
   font-weight: 500;
-  opacity: 0.85;
+  font-size: 14px;
 }
 
-nav a.active {
-  color: var(--gold);
+.topbar-tabs a.active {
+  color: var(--text);
   font-weight: 700;
-  opacity: 1;
 }
 
-nav button {
+.topbar-spacer {
+  flex: 1;
+}
+
+.topbar-email {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.theme-toggle {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.topbar-logout {
   font: inherit;
+  font-size: 13px;
   font-weight: 600;
-  padding: 6px 16px;
-  border-radius: 6px;
-  border: 1px solid var(--gold);
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
   background: transparent;
-  color: var(--gold);
+  color: var(--text);
   cursor: pointer;
 }
 
@@ -160,333 +204,441 @@ button[type="submit"] {
   cursor: pointer;
 }
 
-.dashboard-toolbar {
+/* ── 대시보드 셸 (FilterRail + Main) ───────────────────────────── */
+.dashboard {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* 뷰포트(page) 폭에 따라 유동. 현재 화면에서 약 300px, 넓어지면 함께 커지되 240~340px로 제한. */
+.filter-rail {
+  width: clamp(240px, 20vw, 340px);
+  flex-shrink: 0;
+  background: var(--surface-2);
+  border-right: 1px solid var(--border);
+  padding: 20px 16px;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-  padding: 18px 24px;
-  background: var(--navy);
+  gap: 18px;
 }
 
-.dashboard-toolbar-top {
+.filter-group {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.dashboard-toolbar-top span {
-  font-size: 13px;
-  color: #cdd8ee;
+.filter-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
 }
 
-.dashboard-toolbar button {
+.filter-select {
   font: inherit;
-  font-weight: 600;
-  padding: 6px 16px;
-  border-radius: 6px;
-  border: 1px solid var(--gold);
-  background: transparent;
-  color: var(--gold);
+  font-size: 12.5px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
   cursor: pointer;
 }
 
-.dashboard-toolbar button:disabled {
-  opacity: 0.5;
-  cursor: default;
+.filter-select:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 
-.dashboard-search {
+.dashboard-main {
+  flex: 1;
+  min-width: 0;
+  padding: 20px 40px;
+}
+
+.dashboard-searchrow {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
-}
-
-.search-field-select {
-  padding: 6px 10px;
-  border: 1px solid var(--navy-soft);
-  border-radius: 6px;
-  background: var(--navy);
-  color: #fff;
-  font: inherit;
 }
 
 .search-input {
-  padding: 6px 12px;
-  border: 1px solid var(--navy-soft);
-  border-radius: 6px;
-  background: var(--navy);
-  color: #fff;
+  flex: 1;
+  min-width: 0;
+  padding: 9px 14px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text);
   font: inherit;
-  width: 220px;
+  font-size: 13px;
 }
 
 .search-input::placeholder {
-  color: #8fa3cc;
+  color: var(--muted);
 }
 
-.search-input:focus,
-.search-field-select:focus {
+.search-input:focus {
   outline: none;
-  border-color: var(--gold);
+  border-color: var(--accent);
 }
 
-.search-btn {
+.btn-update {
   font: inherit;
-  font-weight: 700;
-  padding: 6px 16px;
-  border-radius: 6px;
-  border: 1px solid var(--gold);
-  background: var(--gold);
-  color: var(--navy);
+  font-weight: 800;
+  font-size: 13px;
+  white-space: nowrap;
+  padding: 9px 18px;
+  border-radius: 9px;
+  border: none;
+  background: var(--accent);
+  color: var(--accent-ink);
   cursor: pointer;
 }
 
-.search-btn:hover {
-  background: var(--gold-strong);
+.btn-update:disabled {
+  opacity: 0.55;
+  cursor: default;
 }
 
-.search-empty {
+.collect-status {
+  margin-top: 10px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.dashboard-empty {
+  margin-top: 48px;
   text-align: center;
-  color: var(--text);
-  margin-top: 60px;
-  font-size: 15px;
+  color: var(--muted);
+  font-size: 14px;
 }
 
-/* 화면 크기 구간별 고정 열 수. auto-fill로 열 수·카드 폭이 계속 바뀌던 것을 없애고,
-   #root 고정 폭(1126px) 기준 데스크톱 4열(페이지당 12개 = 3행)로 고정한다. */
+/* 데스크톱 3열 × 4행 = 페이지당 12개(PAGE_SIZE)로 고정. 좁은 화면에선 2·1열로 축소. */
 .job-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  padding: 0 16px;
-  margin-top: 15px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-top: 16px;
 }
 
-@media (max-width: 1024px) {
-  .job-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-@media (max-width: 720px) {
+@media (max-width: 900px) {
   .job-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 600px) {
   .job-grid {
     grid-template-columns: 1fr;
   }
 }
 
+/* ── 하이브리드(앱 웹뷰)·모바일 폭 대응 ─────────────────────────────
+   좁은 화면에선 좌측 FilterRail을 상단 가로 바로 접고, TopBar를 축약한다. */
+@media (max-width: 768px) {
+  .topbar {
+    gap: 12px;
+    padding: 0 14px;
+  }
+  .topbar-tabs {
+    gap: 14px;
+  }
+  .topbar-email {
+    display: none; /* 좁은 폭에선 이메일 숨김(overflow 방지) */
+  }
+
+  .dashboard {
+    flex-direction: column;
+  }
+  .filter-rail {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px 14px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .filter-group {
+    flex: 1;
+    min-width: 140px;
+  }
+  .dashboard-main {
+    padding: 16px 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .topbar {
+    gap: 8px;
+  }
+  .wordmark {
+    font-size: 18px;
+  }
+  .topbar-tabs {
+    gap: 10px;
+  }
+  .topbar-tabs a {
+    font-size: 13px;
+  }
+  .topbar-logout {
+    padding: 5px 10px;
+  }
+  .dashboard-searchrow {
+    flex-wrap: wrap;
+  }
+  .btn-update {
+    flex: 1;
+  }
+}
+
+/* ── 채용공고 카드 ─────────────────────────────────────────────── */
 .job-card {
-  display: block;
   position: relative;
-  height: 180px;
-  box-sizing: border-box;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   min-width: 0;
+  min-height: 148px;
+  box-sizing: border-box;
   padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--card-bg);
-  text-align: left;
+  border: none;
+  border-radius: 13px;
+  background: var(--surface);
   text-decoration: none;
-  color: var(--text-h);
-  box-shadow: 0 1px 2px rgba(0, 33, 81, 0.05);
-  transition: box-shadow 0.15s, border-color 0.15s;
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--border), 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: box-shadow 0.15s;
 }
 
 .job-card:hover {
-  border-color: var(--gold-strong);
-  box-shadow: 0 4px 12px rgba(0, 33, 81, 0.08);
+  box-shadow: 0 0 0 1px var(--accent), 0 4px 14px rgba(0, 0, 0, 0.07);
 }
 
 /* 강조: 즐겨찾기 공고 또는 매칭률 종합 70% 이상 */
 .job-card-highlight {
-  border-width: 2px;
-  border-color: rgb(232, 185, 110);
-  box-shadow: 0 0 0 1px rgb(232, 185, 110), 0 2px 8px rgba(0, 33, 81, 0.08);
+  box-shadow: 0 0 0 1px var(--accent), 0 4px 12px oklch(0.78 0.15 70 / 0.2);
+  background: rgb(255, 250, 242);
 }
 
-.job-card-highlight:hover {
-  box-shadow: 0 0 0 1px rgb(232, 185, 110), 0 4px 12px rgba(0, 33, 81, 0.12);
-}
-
-/* 당일 추천 공고(오늘 수집 + 매칭률 70%+): 일반 강조보다 눈에 띄게 별도 색으로 */
+/* 당일 추천 공고(오늘 수집 + 매칭률 70%+) */
 .job-card-today {
-  border-width: 2px;
-  border-color: #E5D85C;
-  box-shadow: 0 0 0 1px #E5D85C, 0 2px 8px rgba(0, 33, 81, 0.08);
+  box-shadow: 0 0 0 3px oklch(0.78 0.15 70), 0 4px 12px oklch(0.78 0.15 70 / 0.2);
+  background: rgb(255, 250, 242);
 }
 
-.job-card-today:hover {
-  box-shadow: 0 0 0 1px #E5D85C, 0 4px 12px rgba(0, 33, 81, 0.12);
+/* 다크 모드: 크림 배경은 밝은 글자와 안 맞으므로 어두운 따뜻한 톤으로 대체 */
+[data-theme="dark"] .job-card-highlight,
+[data-theme="dark"] .job-card-today {
+  background: oklch(0.28 0.012 70);
 }
 
-.job-card h3 {
-  margin: 0 0 8px;
-  /* 우상단 배지(job-source right:16 · job-card-favorite right:44, 각 22px)를 회사명이
-     침범하지 않도록 오른쪽 여백 확보 (배지 왼쪽 끝 ≈ 카드 우측에서 66px) */
-  padding-right: 56px;
-  font-size: 18px;
-  /* 회사명이 길어도 카드 높이가 늘지 않도록 2줄로 제한하고, 넘치면 말줄임표(…) 처리 */
+/* 매칭률 링 */
+.match-ring {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.match-ring-text {
+  font-size: 11px;
+  font-weight: 800;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  fill: var(--text);
+}
+
+.match-ring-text.match-ring-hi {
+  fill: var(--match-hi);
+}
+.match-ring-text.match-ring-mid {
+  fill: var(--match-mid);
+}
+.match-ring-text.match-ring-lo {
+  fill: var(--muted);
+}
+
+.job-card-company {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 44px; /* 우상단 링 침범 방지 */
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.job-source {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.job-card-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-rating {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.job-card-loc {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.job-card-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  /* 공백 없는 긴 회사명/토큰이 가로로 삐져나가지 않고 줄바꿈되도록 */
   overflow-wrap: break-word;
   word-break: break-word;
 }
 
-.job-rating {
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--text);
-}
-
-.job-card p {
-  margin: 0 0 24px;
-  color: var(--text);
-  font-size: 14px;
-  line-height: 145%;
-  /* 지역+제목이 길어도 하단 D-day와 겹치지 않고 높이 고정되도록 3줄 제한 + 넘치면 말줄임표(…) */
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  /* 공백 없는 긴 공고명이 가로로 삐져나가 grid를 밀지 않도록 강제 줄바꿈 */
-  overflow-wrap: break-word;
-  word-break: break-word;
-}
-
-.job-card .dday {
-  position: absolute;
-  bottom: 16px;
-  left: 16px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--gold-strong);
-}
-
-.job-card-delete {
-  position: absolute;
-  bottom: 12px;
-  right: 12px;
-  width: 24px;
-  height: 24px;
-  display: inline-flex;
+.job-card-foot {
+  margin-top: auto;
+  padding-top: 8px;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
-  border: 1px solid var(--border);
-  border-radius: 50%;
-  background: var(--bg);
-  color: var(--text);
-  cursor: pointer;
-  font-size: 16px;
-  line-height: 1;
-  padding: 0;
-  opacity: 0;
-  transition: opacity 0.15s;
 }
 
-.job-card:hover .job-card-delete {
-  opacity: 1;
-}
-
-.job-card-delete:hover {
-  border-color: #d33;
-  color: #d33;
-  background: rgba(221, 51, 51, 0.08);
-}
-
-.job-card .job-source {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 22px;
-  height: 22px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--accent-bg);
-  color: var(--accent);
+.dday {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
+  white-space: nowrap;
+  flex-shrink: 0;
+  color: oklch(0.6 0.16 60); /* 티어 무관 — 모든 공고 통일 */
 }
 
-.job-card-favorite {
-  position: absolute;
-  top: 12px;
-  right: 44px;
-  width: 22px;
-  height: 22px;
+.job-card-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.job-icon-btn {
+  width: 20px;
+  height: 20px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border: none;
-  border-radius: 50%;
-  background: none;
-  color: var(--gold-strong);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--muted);
   cursor: pointer;
-  font-size: 15px;
+  font-size: 12px;
   line-height: 1;
   padding: 0;
-  opacity: 0.4;
-  transition: opacity 0.15s, color 0.15s;
+  transition: color 0.15s, background 0.15s;
 }
 
-.job-card:hover .job-card-favorite {
-  opacity: 0.75;
+[data-theme="dark"] .job-icon-btn {
+  background: var(--bg);
+}
+
+.job-fav {
+  color: var(--match-mid);
+}
+
+.job-fav.favorited,
+.job-fav:hover {
+  color: var(--accent);
+}
+
+.job-del:hover {
+  color: #e5484d;
+  background: rgba(229, 72, 77, 0.12);
+}
+
+/* JobDetail 헤더에서 재사용되는 레거시 즐겨찾기/삭제 버튼(상세 페이지 리디자인 전까지 유지) */
+.job-card-favorite {
+  border: none;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0;
+  opacity: 0.6;
+  transition: opacity 0.15s;
 }
 
 .job-card-favorite.favorited {
   opacity: 1;
 }
 
-.job-card-favorite:hover {
-  opacity: 1 !important;
+.job-card-delete {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  padding: 0;
 }
 
+.job-card-delete:hover {
+  border-color: #e5484d;
+  color: #e5484d;
+}
+
+/* ── 페이지네이션 (텍스트형: 이전 · N/M · 다음) ─────────────────── */
 .pagination {
   display: flex;
   align-items: center;
-  position: relative;
+  justify-content: center;
+  gap: 16px;
   margin-top: 24px;
-  padding: 0 16px;
 }
 
-.pagination-nav {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 0 auto;
-}
-
-.pagination button {
+.page-link {
   font: inherit;
-  padding: 6px 14px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text-h);
+  font-size: 13px;
+  padding: 4px 8px;
+  border: none;
+  background: none;
+  color: var(--muted);
   cursor: pointer;
 }
 
-.pagination button:disabled {
+.page-link:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.page-link:disabled {
   opacity: 0.4;
   cursor: default;
 }
 
-.pagination-total {
-  position: absolute;
-  right: 16px;
-  color: var(--text);
-  font-size: 14px;
+.page-indicator {
+  font-size: 13px;
+  color: var(--muted);
 }
 
 .job-detail {
@@ -1220,4 +1372,124 @@ button[type="submit"] {
 @keyframes rec-pop-in {
   from { opacity: 0; transform: translateY(8px) scale(0.98); }
   to { opacity: 1; transform: none; }
+}
+
+/* ─── 인증(로그인/회원가입) & 네비 계정 영역 ─────────────────────────────── */
+
+.app-loading {
+  padding: 48px;
+  text-align: center;
+  color: var(--navy);
+}
+
+.nav-spacer {
+  flex: 1;
+}
+
+.nav-email {
+  color: #fff;
+  opacity: 0.85;
+  font-size: 0.9rem;
+}
+
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--navy);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 32px 28px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+}
+
+.auth-title {
+  margin: 0;
+  text-align: center;
+  color: var(--navy);
+  font-size: 1.8rem;
+}
+
+.auth-subtitle {
+  margin: 0 0 8px;
+  text-align: center;
+  color: #666;
+  font-size: 0.95rem;
+}
+
+.auth-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.auth-label input {
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.auth-error {
+  margin: 0;
+  color: #d33;
+  font-size: 0.88rem;
+}
+
+.auth-submit {
+  font: inherit;
+  font-weight: 700;
+  padding: 11px;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+.auth-submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.auth-toggle {
+  font: inherit;
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.88rem;
+}
+
+.auth-notice {
+  margin: 0;
+  padding: 8px 10px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-radius: 6px;
+  font-size: 0.88rem;
+}
+
+.auth-devlink {
+  margin: 0;
+  padding: 8px 10px;
+  background: #fff7e6;
+  border: 1px dashed #e0a800;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  color: #7a5b00;
+  word-break: break-all;
 }

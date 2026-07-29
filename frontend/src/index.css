@@ -12,30 +12,47 @@
   font-display: swap;
 }
 
+/* ── 디자인 토큰 (CurryUP 리디자인) ────────────────────────────────
+   라이트=:root / 다크=[data-theme="dark"]. 매칭률 색상 매핑은 utils/matchTier.ts. */
 :root {
-  --text: #51648a;
-  --text-h: #002151;
-  --bg: #fff;
-  --card-bg: #f4f7fa;
-  --border: #dce3ec;
-  --code-bg: #f4f7fa;
-  --navy: #002151;
-  --navy-soft: #1a3a70;
-  --accent: #002151;
-  --accent-bg: rgba(0, 33, 81, 0.08);
-  --accent-border: rgba(0, 33, 81, 0.35);
-  --gold: #fbdbab;
-  --gold-strong: #e8b96e;
-  --social-bg: rgba(244, 243, 236, 0.5);
+  --bg: oklch(0.975 0.006 85);
+  --surface: oklch(0.998 0.002 85);
+  --surface-2: oklch(0.96 0.008 85);
+  --text: oklch(0.24 0.02 260);
+  --muted: oklch(0.52 0.02 260);
+  --border: oklch(0.9 0.01 85);
+  --navy: oklch(0.32 0.08 265);      /* primary 버튼/사이드바 */
+  --navy-ink: oklch(0.97 0.01 265);
+  --accent: oklch(0.78 0.15 70);     /* 워드마크 UP, 강조 CTA */
+  --accent-ink: oklch(0.22 0.05 70);
+  --match-hi: oklch(0.5 0.13 150);   /* 매칭률 ≥70% */
+  --match-hi-bg: oklch(0.93 0.05 150);
+  --match-mid: oklch(0.32 0.08 265); /* 60~70% */
+  --match-mid-bg: oklch(0.95 0.07 65);
+  --match-lo: oklch(0.52 0.02 260);  /* <60% */
+  --match-lo-bg: oklch(0.92 0.006 260);
+
+  /* 레거시 변수 alias — 아직 리디자인 안 된 화면(프로필/로그인/관리자/상세)이
+     깨지지 않도록 신규 팔레트에 매핑한다. 각 화면 리디자인 단계에서 정리한다. */
+  --text-h: var(--text);
+  --card-bg: var(--surface-2);
+  --code-bg: var(--surface-2);
+  --navy-soft: var(--border);
+  --gold: var(--accent);
+  --gold-strong: var(--accent);
+  --social-bg: var(--surface-2);
+  --accent-bg: oklch(0.32 0.08 265 / 0.1);
+  --accent-border: oklch(0.32 0.08 265 / 0.4);
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
-  --sans: 'NanumSquareNeo', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --sans: 'NanumSquareNeo', system-ui, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif;
   --heading: 'NanumSquareNeo', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --wordmark: 'Manrope', 'NanumSquareNeo', system-ui, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
+  font: 15px/1.5 var(--sans);
+  letter-spacing: 0.1px;
   color-scheme: light;
   color: var(--text);
   background: var(--bg);
@@ -43,22 +60,40 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+[data-theme="dark"] {
+  --bg: oklch(0.19 0.03 260);
+  --surface: oklch(0.25 0.03 260);
+  --surface-2: oklch(0.29 0.03 260);
+  --text: oklch(0.95 0.01 260);
+  --muted: oklch(0.66 0.02 260);
+  --border: oklch(0.35 0.03 260);
+  --navy: oklch(0.29 0.03 260);      /* 다크에서는 accent가 primary 역할 겸함 */
+  --navy-ink: oklch(0.95 0.01 260);
+  --accent: oklch(0.78 0.15 70);
+  --accent-ink: oklch(0.2 0.05 70);
+  --match-hi: oklch(0.72 0.14 150);
+  --match-hi-bg: oklch(0.32 0.06 150);
+  --match-mid: oklch(0.62 0.1 265); /* 라이트 네이비(0.32)는 다크 배경에서 안 보여 밝은 톤으로 */
+  --match-mid-bg: oklch(0.34 0.07 70);
+  --match-lo: oklch(0.68 0.03 260);
+  --match-lo-bg: oklch(0.32 0.03 260);
+
+  --accent-bg: oklch(0.78 0.15 70 / 0.16);
+  --accent-border: oklch(0.78 0.15 70 / 0.45);
+  color-scheme: dark;
 }
 
 #root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
+  width: 100%;
   min-height: 100svh;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  text-align: left;
+  background: var(--bg);
+  color: var(--text);
 }
 
 body {
@@ -69,25 +104,25 @@ h1,
 h2 {
   font-family: var(--heading);
   font-weight: 700;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
+  font-size: 40px;
+  letter-spacing: -1.2px;
+  margin: 24px 0;
   @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
+    font-size: 32px;
+    margin: 16px 0;
   }
 }
 h2 {
-  font-size: 24px;
+  font-size: 22px;
   line-height: 118%;
   letter-spacing: -0.24px;
   margin: 0 0 8px;
   @media (max-width: 1024px) {
-    font-size: 20px;
+    font-size: 19px;
   }
 }
 p {
@@ -99,11 +134,11 @@ code,
   font-family: var(--mono);
   display: inline-flex;
   border-radius: 4px;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 code {
-  font-size: 15px;
+  font-size: 14px;
   line-height: 135%;
   padding: 4px 8px;
   background: var(--code-bg);
