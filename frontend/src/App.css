@@ -11,10 +11,12 @@
 
 .wordmark {
   font-family: var(--wordmark);
-  font-weight: 800;
+  font-weight: 700;
   font-size: 20px;
   letter-spacing: -0.4px;
   color: var(--text);
+  /* 로그인 제목과 동일하게 외곽선으로 굵기 강화(작은 크기라 stroke는 얇게). */
+  -webkit-text-stroke: 0.6px currentColor;
 }
 
 .wordmark-up {
