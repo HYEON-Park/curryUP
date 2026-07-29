@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchProfile, saveProfile } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
 import { ROLE_QUESTIONS, type UserProfile } from "../types";
 import { TagInput } from "../components/TagInput";
 import { AutoResizeTextarea } from "../components/AutoResizeTextarea";
@@ -35,6 +36,7 @@ function snapshotOf(profile: UserProfile) {
 
 export function ProfileEditPage() {
   const navigate = useNavigate();
+  const { refresh } = useAuth();
   const [profile, setProfile] = useState<UserProfile>(EMPTY_PROFILE);
   const [error, setError] = useState<string | null>(null);
 
@@ -113,6 +115,8 @@ export function ProfileEditPage() {
     }
     setError(null);
     await saveProfile(profile);
+    // 저장 후 인증 상태(hasProfile)를 갱신해야 온보딩(/profile/setup) 강제 이동이 풀린다.
+    await refresh();
     navigate("/profile");
   }
 
