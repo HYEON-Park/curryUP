@@ -1,39 +1,14 @@
 # PROGRESS
 
-> 마지막 갱신: 2026-07-29
+> 마지막 갱신: 2026-07-30
 
 현재 무엇을 하는 중이고 다음에 뭘 할지 추적하는 문서. 세션 시작 시 이 파일을 먼저 읽는다.
 (변경 이력 자체는 `CHANGELOG.md`, 구조 설명은 `README.md`가 담당한다.)
 
 ## 현재 작업 중
 
-### FE 리디자인 — 1단계: 대시보드 (코드 완료, 확인 중 / 아직 commit 안 함)
-
-- 진행 절차(사용자 지정, 화면마다 반복): **① rollback 시점 → ② FE 변경 → ③ 서버에서 확인 → ④ 적용(commit)**.
-  화면 순서: **대시보드 → 프로필 → 로그인**. 범위 = **layout/ui/color 위주**(백엔드 미변경).
-- 현재 대시보드 ②까지 완료, **③ 확인 중**. commit(④) 미실시.
-- **rollback 시점**: `git stash create` SHA `274a13c` → 복원 `git checkout 274a13c -- frontend/`.
-  추가 백업: scratchpad `fe-rollback-dashboard/`(세션 종료 시 사라질 수 있으니 재개 시 git 스냅샷 사용).
-- **신규 파일**: `frontend/src/utils/matchTier.ts`(매칭률→티어 hi≥85/mid60-84/lo<60 단일 판정),
-  `hooks/useTheme.ts`(data-theme 라이트/다크 토글+localStorage), `hooks/useJobFilters.ts`(검색+지역+매칭률 threshold AND 필터, 실제 JobPosting 필드 매핑),
-  `components/MatchRingBadge.tsx`(40×40 매칭률 링), `components/JobCard.tsx`(링+하단 ★/✕), `components/FilterRail.tsx`(지역·매칭률 셀렉트).
-- **수정 파일**: `index.css`(OKLCH 토큰 라이트/다크 + 레거시 변수 alias, #root full-width, 워드마크 폰트 변수),
-  `App.tsx`(TopBar: 워드마크 curry/UP + 탭 + 테마토글 + 이메일/로그아웃, 테마 최상위 관리),
-  `App.css`(TopBar/FilterRail/검색행/카드+매칭링/텍스트형 페이지네이션 + 모바일 반응형),
-  `pages/DashboardPage.tsx`(Shell=FilterRail+Main, 클라이언트 필터·페이지네이션, 공고 전체 로드).
-- 사용자 조정 반영: 그리드 3×4 고정, 콘텐츠 좌우 패딩 27px, FilterRail 폭 `clamp(240px,20vw,340px)`,
-  하이브리드(앱 웹뷰) 대응 — ≤768px에서 FilterRail 상단 가로 바로 접기 + TopBar 축약, ≤480px 추가 축약.
-- `tsc -b` 통과. dev 서버 기동 상태(백엔드 :4000 단일 포트 — Vite가 `middlewareMode`로 Express에 붙어 프런트·API를 함께 서빙, 별도 5173 없음. `server.ts:52-58`).
-
-#### 다음 재개 시 (이 리디자인)
-
-- **③ 확인 미완**: 앱 웹뷰에서 대시보드 최종 확인 → OK면 **④ commit**(개인정보 파일 staging 제외 확인).
-- **알려진 부수효과/미결**:
-  - 토큰이 전역이라 아직 리디자인 안 한 **프로필·로그인·상세·관리자 화면도 색이 바뀜**. 레거시 primary 버튼이 amber accent 위 흰 글씨라 대비 약할 수 있음 → 각 화면 단계에서 정리.
-  - **폰트**: Manrope/Noto Sans KR 파일 없어 시스템 폴백만. 실물 폰트 필요 시 `public/fonts`에 추가 후 @font-face.
-  - 그리드는 셸 full-width라 가이드의 `repeat(3,1fr)` 대신 3×4 고정 + ≤900 2열 / ≤600 1열.
-  - 프로필/로그인/상세 화면은 앱 폭에서 아직 거칠 수 있음(2·3단계 대상).
-- **2단계 프로필**, **3단계 로그인**은 같은 ①~④ 절차로 진행(가이드 6·4항 참조: StepRail/AuthCard).
+- 진행 중인 활성 작업 없음. FE 리디자인 전 화면 완료(아래 "최근 완료 · 2026-07-30" 참조).
+- 미결 관찰거리는 "다음 할 일" 참조.
 
 ## 다음 할 일
 
@@ -45,6 +20,19 @@
 - `문서 작성 배치`(write-documents)도 같은 날짜키 수정이 적용됐으나 아직 실행 검증 전 — 다음 실행 때 대상 건수 확인
 
 ## 최근 완료
+
+### 2026-07-30 — FE 리디자인 전 화면 완료 (대시보드→프로필→로그인→상세·관리자)
+
+- 화면별 절차(①rollback→②변경→③확인→④commit)대로 전 화면 완료. 범위 = layout/ui/color, 백엔드/로직 무변경.
+- 공통 시스템: OKLCH 디자인 토큰(라이트/다크) + 테마 토글, 앰버 accent, 매칭률 링 3티어(**hi≥70 초록 / mid 60~70 네이비 / lo<60 회색**, 판정 단일함수 `utils/matchTier.ts`), 버튼 대비 수정(`#fff`→`--accent-ink`), 라이트 `--accent-bg`/`--accent-border` 네이비→앰버 틴트 교정.
+- 화면별: 대시보드(TopBar·FilterRail·매칭링 카드·오늘/강조 box-shadow 구분·D-day 앰버 통일), 프로필(보기=surface 카드 / 편집 폼·커스텀 컴포넌트 TagInput·LocationPicker·JobCategoryPicker 톤 통일), 로그인(배경 `--navy`→`--bg`·surface 카드·워드마크 제목), 공고상세(surface 카드), 관리자(배치 버튼 solid primary·컨트롤 행 카드·테이블 헤더 폴리시).
+- 폰트 한계: NanumSquareNeo가 Regular(400)/Bold(700)만 있어 800+는 렌더 700이 최대(`font-synthesis:none`) → 제목·워드마크는 `-webkit-text-stroke`로 굵기 보완.
+- 커밋: 대시보드 `a1f6b1a` / 프로필 `ac5c243` / 로그인 `dbf388a` / 워드마크 `5e9b59c` / 상세·관리자 `f7e65be`. (선행 멀티테넌트·인증·문서 pending은 `bc46412`~`5de9abd` 4개 커밋으로 분리 정리.)
+
+### 2026-07-29 — 수동 UPDATE 실행 + 오늘 카드 스타일 검증
+
+- `POST /api/collect` 608건 수집 / 신규 매칭 2, 평점조회→매칭률조회 순차 성공. 매칭률조회(headless Claude)가 오늘 수집분 4건에 matchReport 정상 작성 → "문서/매칭 배치 간헐 exit1" 우려는 이번 실행에선 재현 안 됨(성공).
+- 오늘 수집분 4건 매칭률 54~64%(전부 <70) → "오늘 카드"(오늘 수집 + ≥70%) 0건이 설계상 정상. 카드 스타일 확인용으로 추천 임계값(`jobs.ts`)을 임시 70→60 후 원복·재시작.
 
 ### 2026-07-28 — 멀티테넌트 이메일 인증 + seed 계정 데이터 마이그레이션 (실행 완료)
 
