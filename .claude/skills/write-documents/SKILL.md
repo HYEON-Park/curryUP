@@ -35,18 +35,18 @@ description: 대시보드 공고에 대해 Claude가 직접 자기소개서·경
 
 ## 실행 절차
 
-1. `backend/src/data/jobPostings.json`에서 **아직 자소서가 없는 공고**(`documents`가 null이거나 `documents.coverLetter`가 빈 문자열/없음) 중 대상 선정
+1. **실행 시 주입된 대상 공고 파일**(멀티테넌트: `backend/src/data/jobPostings/{userId}.json` — 실제 경로는 배치가 프롬프트로 지정한다. 레거시 단일 파일 `jobPostings.json`을 읽지 말 것)에서 **아직 자소서가 없는 공고**(`documents`가 null이거나 `documents.coverLetter`가 빈 문자열/없음) 중 대상 선정
    - 기본 대상: 위 **문서생성 기준** 적용 (신규+평점 2.8↑+매칭률 70%↑ or 즐겨찾기)
    - `documents.matchReport`가 이미 있으면(매칭률 조회 배치가 먼저 작성) **그 매칭률을 재사용**해 70% 판정에 쓰고 matchReport는 다시 만들지 않는다. 없으면 매칭률 평가표부터 새로 작성한다.
    - 사용자가 범위를 지정하면 그에 따름
-2. `backend/src/data/userProfile.json`에서 프로필 로드 (아래 §8의 필드 매핑대로 로드하며, 개인 정보는 이 문서에 하드코딩하지 않는다)
+2. **실행 시 주입된 프로필 파일**(멀티테넌트: `backend/src/data/profiles/{userId}.json` — 실제 경로는 배치가 프롬프트로 지정한다. 레거시 단일 파일 `userProfile.json`을 읽지 말 것)에서 프로필 로드 (아래 §8의 필드 매핑대로 로드하며, 개인 정보는 이 문서에 하드코딩하지 않는다)
 3. 공고별로 아래 프롬프트 체계에 따라 4개 필드 생성:
    - `matchReport` — 매칭률 사전 평가표 + 지원 권장도 (§6-1, §6-2)
    - `workExperience` — 공고 맞춤 경력기술서 (§6-3)
    - `coverLetter` — 자기소개서: 지원동기(KKK) + 직무 역량(STAR-F) + 입사 후 포부 (§6-4)
    - `intro` — 자기소개 요약 (2,000자 미만)
 4. 인간화 리라이팅(§3) 적용 후 자가 검증 체크리스트(§7) 통과 확인
-5. `generatedAt`에 ISO 시각 기록 후 jobPostings.json에 id 기준으로 병합 저장
+5. `generatedAt`에 ISO 시각 기록 후 **주입된 대상 공고 파일**에 id 기준으로 병합 저장
    - 저장 직전에 파일을 다시 읽어 최신 상태에 병합할 것 (서버가 파일을 동시에 쓸 수 있음)
 6. 완료 후 작성 건수·회사 목록 보고
 
@@ -107,7 +107,7 @@ description: 대시보드 공고에 대해 Claude가 직접 자기소개서·경
 #### 2-3. 수치화 원칙
 
 - 모든 결과는 수치로 표현 (수치 없으면 추정치라도 표기 후 "실데이터로 교체 권장" 안내)
-- 대표 수치 세트: `userProfile.json`의 `representativeMetrics`에 값이 있으면 그 수치를 재사용한다.
+- 대표 수치 세트: **주입된 프로필 파일**의 `representativeMetrics`에 값이 있으면 그 수치를 재사용한다.
   없으면 공고·경력기술(careerHistory) 기반 추정치로 표기하고 "실데이터로 교체 권장"을 붙인다.
 
 #### 2-4. 소제목 규칙
@@ -140,7 +140,7 @@ description: 대시보드 공고에 대해 Claude가 직접 자기소개서·경
 
 - 30세 한국인 취준생 말투 (자연스러운 구어체)
 - 겸손하지도 건방지지도 않은 톤
-- `(n)`년차 경력자의 담담한 자기 선언 톤 — `(n)` = `userProfile.json`의 `yearsOfExperience`
+- `(n)`년차 경력자의 담담한 자기 선언 톤 — `(n)` = **주입된 프로필 파일**의 `yearsOfExperience`
 
 ### 4. 강조 원칙
 
@@ -168,7 +168,7 @@ description: 대시보드 공고에 대해 Claude가 직접 자기소개서·경
 
 ### 5. 시그니처 표현 (본인만의 자산)
 
-모두 `userProfile.json`에서 로드한다. 값이 없으면 해당 항목은 생략한다(빈 값을 지어내지 말 것).
+모두 **주입된 프로필 파일**에서 로드한다. 값이 없으면 해당 항목은 생략한다(빈 값을 지어내지 말 것).
 
 #### 5-1. 대표 슬로건 → `userProfile.slogan`
 
@@ -247,9 +247,9 @@ description: 대시보드 공고에 대해 Claude가 직접 자기소개서·경
 - [ ] 인간화 리라이팅 시 단문 30%+ 준수
 - [ ] `userProfile.slogan`이 설정돼 있으면 시그니처 슬로건이 최소 1회 등장 (없으면 이 항목 제외)
 
-### 8. 개인 프로필 (하드코딩 금지 — 전부 `userProfile.json`에서 로드)
+### 8. 개인 프로필 (하드코딩 금지 — 전부 주입된 프로필 파일에서 로드)
 
-개인 정보는 이 문서에 박아두지 않는다. 매 실행 시 `backend/src/data/userProfile.json`에서 읽어 사용한다.
+개인 정보는 이 문서에 박아두지 않는다. 매 실행 시 **주입된 프로필 파일**(멀티테넌트: `backend/src/data/profiles/{userId}.json` — 실제 경로는 배치가 프롬프트로 지정)에서 읽어 사용한다. 레거시 단일 파일 `userProfile.json`은 읽지 않는다.
 
 | 항목 | 프로필 필드 |
 |---|---|

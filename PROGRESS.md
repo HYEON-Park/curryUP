@@ -7,8 +7,7 @@
 
 ## 현재 작업 중
 
-- 진행 중인 활성 작업 없음. FE 리디자인 전 화면 완료(아래 "최근 완료 · 2026-07-30" 참조).
-- 미결 관찰거리는 "다음 할 일" 참조.
+- (없음)
 
 ## 다음 할 일
 
@@ -20,6 +19,18 @@
 - `문서 작성 배치`(write-documents)도 같은 날짜키 수정이 적용됐으나 아직 실행 검증 전 — 다음 실행 때 대상 건수 확인
 
 ## 최근 완료
+
+### 2026-07-30 — 프로필 seed 값 채우기 완료 (선택필드 2개 입력)
+
+- 라이브 프로필(`profiles/usr_1785226110609.json`)은 07-28 마이그레이션 때 이미 실제 값으로 대부분 채워져 있었음(경력 4년차·희망직무·근무지·스킬·자격증·경력사항·선택필드 대다수). `.example.json`의 마스킹 플레이스홀더는 커밋용 템플릿이라 그대로 유지가 정상.
+- 실제로 비어 있던 선택필드 2개만 `/profile/edit`(4000)에서 직접 입력·저장: `sideProjects`="사이드프로젝트", `learningStack`="바이브코딩, react". `PUT → profiles/{userId}.json` 반영, `lastProfileUpdate` 2026-07-30 갱신 확인.
+
+### 2026-07-30 — write-documents SKILL 경로 정합 + 프로필 seed 템플릿 + 파이프라인 검증
+
+- **SKILL 레거시 경로 정리**: `.claude/skills/write-documents/SKILL.md`가 §1·§2·§2-3·§3-3·§5·§8 등 8곳에서 레거시 단일 파일(`jobPostings.json`·`userProfile.json`)을 가리키던 것을 **"실행 시 주입된 대상/프로필 파일"(멀티테넌트 `jobPostings/{userId}.json`·`profiles/{userId}.json`)** 로 교체 + "레거시 읽지 말 것" 명시. `writeDocumentsJob.ts`가 프롬프트로 주입하는 per-user 경로와 지시가 이제 한 방향(모순 제거 — 남의 프로필로 자소서 쓰거나 산출물을 레거시 파일로 흘릴 위험 차단).
+- **프로필 seed 템플릿 작성**: draft(중첩 `applicant.profile`) 예시 → 라이브 평평 `UserProfile` 스키마로 변환해 `backend/src/data/userProfile.example.json` 생성(레거시/실데이터 미덮어씀). `career[]→careerHistory`(문자열), `certs→certifications`, `narrative+signature.closing→careerNarrative`, `signature.phrase→slogan`, `results(verified:false)→representativeMetrics`("약" 완화, §7). `isProfileConfigured` 통과 검증 완료.
+- **스키마 결정**: 평평 스키마 유지(중첩 개편 안 함 — types/store/profile.ts/프론트 폼/SKILL §8/마이그레이션 대공사 회피).
+- **파이프라인 완결 검증(코드 무변경)**: "저장 시 파일 생성/갱신 배치"는 이미 존재 — `PUT /api/profile → saveProfile → profiles/{userId}.json`. `ProfileEditPage.tsx`에 선택 필드 9개(`sideProjects`·`learningStack`·`aiToolUsage`·`slogan`·`careerNarrative`·`education`·`careerDirection`·`interestDomains`·`representativeMetrics`) **이미 전부 구현·배선**됨 → 폼 확장/신규 배치 불필요. 남은 실제 작업은 값 채우기뿐(위 "현재 작업 중").
 
 ### 2026-07-30 — FE 리디자인 전 화면 완료 (대시보드→프로필→로그인→상세·관리자)
 

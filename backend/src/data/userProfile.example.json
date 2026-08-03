@@ -1,0 +1,35 @@
+{
+  "yearsOfExperience": 4,
+  "skills": [
+    "Java",
+    "Spring",
+    "Oracle",
+    "RESTful API",
+    "JSP",
+    "JavaScript",
+    "PHP",
+    "Laravel",
+    "Linux",
+    "Git"
+  ],
+  "careerHistory": "■ [SI · 재직중] 회사명 · Channel Unit · 웹개발 (2025.__ ~ 재직중, 10개월)\n - 프로젝트명 (2025.06~2026.05) / Java·Spring·Oracle·JSP·JavaScript·Jex Framework\n   · App·Web 다채널 공통 백엔드 설계 — 채널 간 데이터 정합성 확보\n   · 금융 수신 상품 개설·처리 프로세스 개발\n   · 미성년자 전용 수신 상품 및 공통 서비스 처리 로직 설계·개발\n\n■ [솔루션] 회사명 · 부서명 · 업무(직급) (____.__ ~ ____.__, 1년 7개월) — 전자문서 SW 솔루션 기업(자체 솔루션 보유)\n - 농협자산관리회사 통합업무시스템(AMS) 고도화 (2024.03~2024.08) / Java·Spring·Oracle·RESTful API·JSP·Linux\n   · 자사 솔루션 ↔ 고객사 업무 시스템 간 데이터 송수신 프로세스 구축(서버 간 RESTful API)\n   · Procedure 등록 DB 자동화 — 운영자 반복 수기 작업을 백엔드 구조로 전환\n   · 솔루션 인터페이스 연계 — PDF 생성 로직 및 HTML5 뷰어 페이지 개발\n   · 솔루션 구동 서버 세팅 및 배포 관리\n - 프로젝트명 (6개월, 고객사 상주) / Java·Spring·Oracle·JSP·Linux\n   · 자사 전자문서 솔루션 기반 비즈니스 로직 구축 및 고객사 시스템 연계 개발\n   · 솔루션 구동 서버 환경 세팅 및 서버 사이드 소스 구현\n   · 파일 다운로드 기능 개발\n   · 고객사 상주 방식으로 요구사항 협의부터 구현까지 직접 수행\n - 솔루션 유지보수 및 트러블슈팅 (상시) / Java·Spring·Oracle\n   · 자사 전자문서 솔루션 운영 이슈 분석 및 장애 대응\n   · 고객사별 커스터마이징 요구사항 반영 및 기능 개선\n\n■ [솔루션] 회사명 · 프로그램팀 · 백엔드·서버개발 (____.__ ~ ____.__, 2년 2개월)\n - 제3금융권 고객사 솔루션 SM 전담 (약 1년 8개월) / Java·PHP·Laravel·RDBMS\n   · 솔루션 운영·유지보수 전담 — 장애 대응, 기능 개선, 고객 요청 반영\n   · 대출 업무 로직 전담 — 대출 관리, 대출 실행, 기표 로그 관리\n   · 데이터 마이그레이션 수행\n   · 서버 이전 시 소스 검증 및 이관\n - 윙크스톤 신규상품개발 — 외부 시스템 2개 동시 연동 (2023.01~2023.06) / Java·RESTful API·RDBMS·Git·PHP·Laravel\n   · 머시기 개발 / 머시기 개발2 / 자동확인 배치 신규\n   · (추정·미검증) 서류 검증 누락 약 0건, 평균 처리시간 약 24시간→1시간 이내, 운영 수기 개입 월 30건대→2~3건",
+  "certifications": [
+    "자격증명",
+    "자격증명 2급"
+  ],
+  "locations": [],
+  "desiredRoleCategories": [
+    "백엔드"
+  ],
+  "roleAnswers": {},
+  "sideProjects": "CuryyUp — 플젝 소개 (GitHub 공개). 스택: TypeScript, Node.js, Ollama, Claude Code",
+  "learningStack": "Spring Boot, JPA, Docker, Kubernetes, AWS",
+  "aiToolUsage": "개인 프로젝트(CuryyUp)에서 Claude Code·Ollama 기반 배치를 직접 구축·운영",
+  "slogan": "끊김 없이 흐르고, 끊겼다면 어디서 끊겼는지 즉시 보이는",
+  "careerNarrative": "경력 4년 7개월 중 3년 9개월을 솔루션 환경에서 보냄. SI도 겪어보려 이직해 10개월 경험한 결과, 코어 기술을 자체 보유한 솔루션·플랫폼 기업이 본인에게 맞는다는 결론에 도달. 근거는 경력 구성(솔루션 3년 9개월 vs SI 10개월). 자체 솔루션·플랫폼 기업 지원 시에만 이 서사를 활성화한다. 마무리 톤: 빨리 가는 것보다, 끊기지 않게 가는 게 더 중요하다고 생각합니다.",
+  "education": "학과 졸업 (2024.08)",
+  "careerDirection": "코어 비즈니스 로직을 자체 보유한 솔루션·플랫폼 기업",
+  "interestDomains": "여신(제3금융 대출), 수신(저축은행), 자산관리, 보험, 공공(정부24), 커머스 정산",
+  "representativeMetrics": "(모두 추정·미검증 → '약' 완화 또는 미노출) 서류 검증 누락: 약 0건 / 평균 처리시간: 약 24시간 → 1시간 이내 / 운영 수기 개입: 월 약 30건대 → 2~3건",
+  "lastProfileUpdate": null
+}
