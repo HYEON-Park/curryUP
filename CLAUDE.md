@@ -1,5 +1,28 @@
 # CLAUDE.md — 프로젝트 지시사항
 
+## 말투 (어체)
+
+사용자에게 답할 때는 **합니다체로 고정**한다. "~하죠", "~해요" 등으로 어체를 섞거나 바꾸지 않는다.
+
+## 앱 접속 (포트)
+
+앱 화면을 열 때는 **백엔드 포트 4000**으로 접속한다. 백엔드가 빌드된 프론트까지 서빙한다.
+예: `http://localhost:4000/profile/edit`
+
+- **Vite dev 서버(5173)를 임의로 띄우지 않는다.** (`npm run dev` in `frontend/` 금지)
+  5173에는 API가 없어 로그인·데이터 호출이 전부 실패한다.
+- 화면 열어달라는 요청 = 4000 URL을 연다. 다른 포트 가정 금지.
+
+**만약 5173으로 부르는 실수를 했다면 (복구 절차):**
+1. 즉시 인정하고 중단한다. 사용자에게 되묻지 말고 바로 4000으로 다시 연다.
+2. 잘못 띄운 Vite 프로세스를 정리한다:
+   ```powershell
+   Get-WmiObject Win32_Process | Where-Object {
+     $_.CommandLine -like "*vite*" -and $_.CommandLine -like "*R\frontend*"
+   } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+   ```
+3. `http://localhost:4000/...`로 열어 정상 동작을 확인한 뒤 보고한다.
+
 ## 서버 재시작
 
 재시작 요청 시 반드시 아래 순서로 처리한다.
