@@ -700,6 +700,13 @@ button[type="submit"] {
   color: var(--muted);
 }
 
+.dashboard-footer {
+  margin-top: 12px;
+  text-align: right;
+  font-size: 13px;
+  color: var(--muted);
+}
+
 .job-detail {
   max-width: 640px;
   margin: 24px auto 0;
@@ -1351,10 +1358,20 @@ button[type="submit"] {
   max-height: 82vh;
   overflow-y: auto;
   padding: 28px 28px 24px;
-  background: #fff;
+  background: var(--surface);
   border-radius: 14px;
   box-shadow: 0 12px 40px rgba(0, 33, 81, 0.25);
   animation: rec-pop-in 0.22s ease;
+}
+
+/* 다크모드에서는 모달을 배경보다 밝게 띄운다(surface 계열보다 한 단계 위 밝기). */
+[data-theme="dark"] .rec-modal {
+  background: oklch(0.34 0.03 260);
+}
+
+/* 다크모드 추천 카드 기본 테두리는 흰색(호버 시 골드는 유지). */
+[data-theme="dark"] .rec-card {
+  border-color: #fff;
 }
 
 .rec-overlay.closing .rec-modal {

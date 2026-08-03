@@ -222,6 +222,8 @@ export function DashboardPage() {
                 </button>
               </div>
             )}
+
+            <div className="dashboard-footer">총 {filteredJobs.length}개</div>
           </>
         )}
       </main>
