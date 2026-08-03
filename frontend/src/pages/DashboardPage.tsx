@@ -201,29 +201,30 @@ export function DashboardPage() {
               ))}
             </div>
 
-            {totalPages > 1 && (
-              <div className="pagination">
-                <button
-                  className="page-link"
-                  disabled={safePage <= 1}
-                  onClick={() => setPage(safePage - 1)}
-                >
-                  이전
-                </button>
-                <span className="page-indicator">
-                  {safePage} / {totalPages}
-                </span>
-                <button
-                  className="page-link"
-                  disabled={safePage >= totalPages}
-                  onClick={() => setPage(safePage + 1)}
-                >
-                  다음
-                </button>
-              </div>
-            )}
-
-            <div className="dashboard-footer">총 {filteredJobs.length}개</div>
+            <div className="pagination">
+              {totalPages > 1 && (
+                <div className="pagination-controls">
+                  <button
+                    className="page-link"
+                    disabled={safePage <= 1}
+                    onClick={() => setPage(safePage - 1)}
+                  >
+                    이전
+                  </button>
+                  <span className="page-indicator">
+                    {safePage} / {totalPages}
+                  </span>
+                  <button
+                    className="page-link"
+                    disabled={safePage >= totalPages}
+                    onClick={() => setPage(safePage + 1)}
+                  >
+                    다음
+                  </button>
+                </div>
+              )}
+              <div className="dashboard-footer">총 {filteredJobs.length}개</div>
+            </div>
           </>
         )}
       </main>

@@ -1,4 +1,4 @@
-import { NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Link, NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AdminBatchPage } from "./pages/AdminBatchPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { JobDetailPage } from "./pages/JobDetailPage";
@@ -32,7 +32,9 @@ function AuthedApp({ theme, toggle }: { theme: string; toggle: () => void }) {
   return (
     <div>
       <header className="topbar">
-        <Wordmark />
+        <Link to="/" className="wordmark-link" aria-label="대시보드로 이동">
+          <Wordmark />
+        </Link>
         <nav className="topbar-tabs">
           <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>
             대시보드

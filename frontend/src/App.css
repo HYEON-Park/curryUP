@@ -23,6 +23,13 @@
   color: var(--accent);
 }
 
+/* 워드마크를 홈(대시보드) 링크로 감싸되 외형은 텍스트 그대로 유지. */
+.wordmark-link {
+  text-decoration: none;
+  color: inherit;
+  display: inline-flex;
+}
+
 .topbar-tabs {
   display: flex;
   gap: 18px;
@@ -669,11 +676,18 @@ button[type="submit"] {
 
 /* ── 페이지네이션 (텍스트형: 이전 · N/M · 다음) ─────────────────── */
 .pagination {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  min-height: 34px;
   margin-top: 24px;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
 .page-link {
@@ -701,8 +715,8 @@ button[type="submit"] {
 }
 
 .dashboard-footer {
-  margin-top: 12px;
-  text-align: right;
+  position: absolute;
+  right: 0;
   font-size: 13px;
   color: var(--muted);
 }
