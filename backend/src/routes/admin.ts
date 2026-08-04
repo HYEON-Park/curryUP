@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authMiddleware } from "../auth/jwt.js";
 import { getHiddenJobs, getJobPostings, hasProfile, permanentDeleteAllHiddenJobs, permanentDeleteHiddenJobs, restoreJob } from "../data/store.js";
+import { runClosedCheckNow } from "../scheduler/closedCheckJob.js";
 import { MATCH_CHECK_JOB_NAME, runMatchCheckIfNeeded } from "../scheduler/matchCheckJob.js";
 import { runNotifyNow } from "../scheduler/notifyJob.js";
 import { RATING_CHECK_JOB_NAME, runRatingCheckNow } from "../scheduler/ratingCheckJob.js";
@@ -66,6 +67,14 @@ adminRouter.get("/match-check/status", async (req, res) => {
 adminRouter.post("/match-check/run", (req, res) => {
   const userId = req.user!.userId;
   runMatchCheckIfNeeded(userId).catch((error) => console.error("[admin] match check batch failed:", error));
+  res.status(202).json({ started: true });
+});
+
+// 수집 공고의 진행중/종료 여부를 점검하는 배치. 공고 수만큼 순차 요청이라 수십 초 걸릴 수 있어
+// 응답을 기다리지 않고 시작만 알린다(진행 상황은 GET /runs 폴링).
+adminRouter.post("/closed-check/run", (req, res) => {
+  const userId = req.user!.userId;
+  runClosedCheckNow(userId).catch((error) => console.error("[admin] closed check batch failed:", error));
   res.status(202).json({ started: true });
 });
 

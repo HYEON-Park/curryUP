@@ -189,6 +189,12 @@ export async function runMatchCheckBatch(): Promise<{ started: boolean }> {
   return res.json();
 }
 
+export async function runClosedCheckBatch(): Promise<{ started: boolean }> {
+  const res = await authFetch(`/admin/closed-check/run`, { method: "POST" });
+  if (!res.ok) throw new Error("종료 공고 점검 실행에 실패했습니다.");
+  return res.json();
+}
+
 export async function fetchMatchCheckStatus(): Promise<{ running: boolean }> {
   const res = await authFetch(`/admin/match-check/status`);
   return res.json();

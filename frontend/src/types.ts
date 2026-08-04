@@ -44,6 +44,8 @@ export interface JobPosting {
   isFavorite?: boolean;
   rating?: string | null;
   ratingUpdatedAt?: string | null;
+  disabled?: boolean; // 종료공고 배치가 표시. 대시보드에서 흐리게·X만 노출.
+  closedAt?: string;
 }
 
 export interface HiddenJobPosting extends JobPosting {
@@ -80,6 +82,7 @@ export interface RunRecord {
   status: "running" | "success" | "failed";
   error?: string;
   progress?: RunProgress;
+  closedJobs?: { company: string; title: string }[];
 }
 
 export interface RunsPage {

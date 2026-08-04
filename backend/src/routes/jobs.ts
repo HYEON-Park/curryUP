@@ -76,6 +76,7 @@ jobsRouter.get("/recommendations", async (req, res) => {
   const jobs = await getJobPostings(userId);
   const items = jobs
     .filter((j) => isCollectedToday(j.collectedAt))
+    .filter((j) => !j.disabled) // 종료 공고는 추천에서 제외.
     .filter((j) => {
       const overall = matchOverall(j.documents?.matchReport);
       return overall !== null && overall >= 70;

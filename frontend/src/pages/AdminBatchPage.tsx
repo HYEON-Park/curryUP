@@ -7,6 +7,7 @@ import {
   purgeAllHiddenJobs,
   purgeSelectedHiddenJobs,
   restoreHiddenJob,
+  runClosedCheckBatch,
   runMatchCheckBatch,
   runNotifyBatch,
   runWriteDocsBatch,
@@ -24,6 +25,7 @@ const JOB_LABELS: Record<string, string> = {
   평점조회: "평점 조회 배치",
   매칭률조회: "매칭률 조회 배치 (Claude)",
   "write-documents": "문서 작성 배치 (Claude)",
+  종료공고: "종료 공고 점검 배치",
 };
 
 const STATUS_LABELS: Record<RunRecord["status"], string> = {
@@ -433,6 +435,26 @@ function BatchMonitoringTab() {
             </button>
           </div>
         </div>
+
+        <div className="admin-control-row">
+          <span>{JOB_LABELS.종료공고}</span>
+          <div className="admin-control-actions">
+            <button
+              disabled={pending !== null}
+              onClick={() =>
+                handleAction(
+                  "closed-check",
+                  "종료 공고 점검",
+                  runClosedCheckBatch,
+                  "종료 점검 시작됨 (아래 표에서 진행 상황 확인)",
+                  false
+                )
+              }
+            >
+              지금 종료 점검
+            </button>
+          </div>
+        </div>
       </div>
 
       {actionStatus && <p className="admin-status">{actionStatus}</p>}
@@ -451,8 +473,15 @@ function BatchMonitoringTab() {
           {items.map((run) => (
             <Fragment key={run.id}>
               <tr
-                className={run.status === "failed" ? "run-row-clickable" : undefined}
-                onClick={() => run.status === "failed" && toggleExpand(run.id)}
+                className={
+                  run.status === "failed" || (run.closedJobs?.length ?? 0) > 0
+                    ? "run-row-clickable"
+                    : undefined
+                }
+                onClick={() =>
+                  (run.status === "failed" || (run.closedJobs?.length ?? 0) > 0) &&
+                  toggleExpand(run.id)
+                }
               >
                 <td>{JOB_LABELS[run.jobName] ?? run.jobName}</td>
                 <td>{formatDate(run.date)}</td>
@@ -462,13 +491,26 @@ function BatchMonitoringTab() {
                   <span className={`status-badge ${run.status}`}>{STATUS_LABELS[run.status]}</span>
                 </td>
               </tr>
-              {run.status === "failed" && expanded.has(run.id) && (
-                <tr>
-                  <td colSpan={5}>
-                    <pre className="run-error">{run.error}</pre>
-                  </td>
-                </tr>
-              )}
+              {expanded.has(run.id) &&
+                (run.status === "failed" ? (
+                  <tr>
+                    <td colSpan={5}>
+                      <pre className="run-error">{run.error}</pre>
+                    </td>
+                  </tr>
+                ) : (run.closedJobs?.length ?? 0) > 0 ? (
+                  <tr>
+                    <td colSpan={5}>
+                      <ul className="closed-jobs-list">
+                        {run.closedJobs!.map((c, i) => (
+                          <li key={i}>
+                            {c.company} — {c.title}
+                          </li>
+                        ))}
+                      </ul>
+                    </td>
+                  </tr>
+                ) : null)}
             </Fragment>
           ))}
         </tbody>

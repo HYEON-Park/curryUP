@@ -40,6 +40,8 @@ export interface JobPosting {
   isFavorite?: boolean;
   rating?: string | null;
   ratingUpdatedAt?: string | null;
+  disabled?: boolean;                // 종료공고 배치가 사이트에서 내려간(마감) 공고에 표시. 대시보드에서 흐리게·X만 노출, 백필·추천 제외.
+  closedAt?: string;                 // 종료 감지 시각(ISO).
 }
 
 export interface GeneratedDocuments {

@@ -2,7 +2,7 @@ import axios from "axios";
 import * as cheerio from "cheerio";
 import type { JobPosting } from "../types.js";
 import { resolveDeadlineYear } from "../utils/deadline.js";
-import type { Scraper } from "./BaseScraper.js";
+import type { PostingStatus, Scraper } from "./BaseScraper.js";
 
 const BASE_URL = "https://www.saramin.co.kr";
 const USER_AGENT =
@@ -36,6 +36,16 @@ const MAX_PAGES = 5;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// 사람인 상세 본문은 메인 뷰(view)가 아니라 view-detail 엔드포인트에서 서버 렌더로 내려온다.
+// .user_content 컨테이너에 담당업무·자격요건·우대사항·근무조건 등 JD 원문이 들어있다.
+function extractRecIdx(sourceUrl: string): string | null {
+  try {
+    return new URL(sourceUrl).searchParams.get("rec_idx");
+  } catch {
+    return null;
+  }
 }
 
 // .job_sector 칩은 업종("웹개발","SI개발")과 직무("백엔드/서버개발")가 뒤섞여 순서가
@@ -134,5 +144,28 @@ export const SaraminScraper: Scraper = {
     }
 
     return postings;
+  },
+
+  // 내려간 공고는 view-detail이 not-exist-view로 리다이렉트되며 404를 반환한다(실측 확인).
+  // .user_content(JD 원문 컨테이너)가 있으면 진행중. 그 외/네트워크 오류는 unknown(유지).
+  async checkPostingStatus(sourceUrl: string): Promise<PostingStatus> {
+    const recIdx = extractRecIdx(sourceUrl);
+    if (!recIdx) return "unknown";
+    try {
+      const response = await axios.get<string>(`${BASE_URL}/zf_user/jobs/relay/view-detail`, {
+        params: { rec_idx: recIdx },
+        headers: { "User-Agent": USER_AGENT },
+        timeout: 20000,
+        validateStatus: () => true,
+      });
+      if (response.status === 404) return "closed";
+      if (response.status >= 200 && response.status < 300) {
+        const $ = cheerio.load(response.data);
+        if ($(".user_content").first().length > 0) return "open";
+      }
+      return "unknown";
+    } catch {
+      return "unknown";
+    }
   },
 };

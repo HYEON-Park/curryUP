@@ -11,6 +11,7 @@ import { profileRouter } from "./routes/profile.js";
 import { jobsRouter } from "./routes/jobs.js";
 // AI 문서 생성은 Claude Code가 담당한다 (.claude/skills/write-documents). scrape 체인에서 writeDocumentsJob이 실행하고,
 // 관리자 페이지의 수동 실행 버튼은 admin.ts의 POST /ai/run(runWriteDocumentsIfNeeded)로 이어진다.
+import { startClosedCheckJob } from "./scheduler/closedCheckJob.js";
 import { catchUpNotifyJob, startNotifyJob } from "./scheduler/notifyJob.js";
 import { reconcileInterruptedRuns } from "./scheduler/runLog.js";
 import { startScrapeJob } from "./scheduler/scrapeJob.js";
@@ -41,6 +42,7 @@ await reloadSkillFile("STARTUP");
 
 startScrapeJob();
 startNotifyJob();
+startClosedCheckJob();
 
 const server = http.createServer(app);
 

@@ -35,6 +35,7 @@ export interface RunRecord {
   status: RunStatus;
   error?: string;
   progress?: RunProgress;
+  closedJobs?: { company: string; title: string }[]; // 종료공고 배치가 이번 실행에서 disabled 처리한 공고 목록(관리자 토글 표시용).
 }
 
 export interface RunHistoryPage {
@@ -165,6 +166,21 @@ export async function updateProgress(userId: string, jobName: string, progress: 
     const latest = runningEntries[runningEntries.length - 1];
     if (!latest) return;
     latest.progress = progress;
+    await writeLog(userId, log);
+  });
+}
+
+// 완료된 실행 레코드(id 기준)에 종료 공고 목록을 붙인다. recordRun이 완료 시 레코드를 통째로
+// 덮어쓰므로, running 중이 아니라 runScheduledJob이 반환된 "뒤"에 id로 찾아 붙여야 유실되지 않는다.
+export async function attachClosedJobs(
+  userId: string,
+  runId: string,
+  closedJobs: { company: string; title: string }[]
+): Promise<void> {
+  await withLog(userId, async (log) => {
+    const entry = log.find((r) => r.id === runId);
+    if (!entry) return;
+    entry.closedJobs = closedJobs;
     await writeLog(userId, log);
   });
 }
