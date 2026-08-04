@@ -758,8 +758,8 @@ button[type="submit"] {
 }
 
 .job-detail {
-  max-width: 640px;
-  margin: 24px auto 0;
+  max-width: 780px;
+  margin: 40px auto 0;
   text-align: left;
   padding: 8px 28px 24px;
   background: var(--surface);
@@ -812,10 +812,33 @@ button[type="submit"] {
   opacity: 1;
 }
 
+/* 근무지(p)와 원본 공고 버튼을 한 줄에: 근무지 좌측 · 버튼 우측 */
+.job-detail-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 24px 0 20px;
+}
+
+/* 원본 공고 보기: 텍스트 링크 → 아웃라인 버튼(hover 시 앰버 채움) */
 .source-link {
   display: inline-block;
-  margin: 8px 0 20px;
+  flex: none;
+  margin: 0;
+  padding: 6px 12px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
   color: var(--accent);
+  background: var(--surface);
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.source-link:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
 }
 
 .tabs {
@@ -907,31 +930,80 @@ button[type="submit"] {
   padding: 0;
 }
 
+/* 리포트 카드: 종이색 배경 + 점선 테두리 + 좌측 스티치(점선) 포인트 라인 */
 .match-chart {
-  background: #fff;
-  border: 1px solid #e2e0d8;
+  position: relative;
+  background: var(--paper);
+  border: 1px dashed var(--border);
   border-radius: 16px;
-  padding: 20px 24px 8px;
+  padding: 20px 24px 8px 30px;
+  overflow: hidden;
+}
+
+.match-chart::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: repeating-linear-gradient(
+    180deg,
+    var(--accent) 0 8px,
+    transparent 8px 14px
+  );
 }
 
 .match-chart-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   padding-bottom: 12px;
-  border-bottom: 1px solid #e2e0d8;
+  border-bottom: 1px solid var(--border);
 }
 
 .match-chart-title {
   font-size: 19px;
   font-weight: 700;
-  color: #2c2c2a;
+  color: var(--text);
 }
 
-.match-chart-overall {
-  font-size: 15px;
-  font-weight: 600;
-  color: #0f6e56;
+/* 종합 점수 도장 스탬프: 회전된 원형 뱃지, 점수(위)/종합(아래) 상하 배치.
+   색상 티어는 utils/matchTier.ts 규칙을 따른다(hi/mid/lo). */
+.match-stamp {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  transform: rotate(-9deg);
+  line-height: 1;
+  gap: 3px;
+}
+
+.match-stamp.tier-hi {
+  color: var(--match-hi);
+}
+.match-stamp.tier-mid {
+  color: var(--match-mid);
+}
+.match-stamp.tier-lo {
+  color: var(--match-lo);
+}
+
+.match-stamp-score {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.match-stamp-tag {
+  font-size: 11px;
+  letter-spacing: 1px;
+  opacity: 0.85;
 }
 
 .match-chart-list {
@@ -954,7 +1026,7 @@ button[type="submit"] {
 .match-row-label {
   font-size: 16px;
   font-weight: 600;
-  color: #2c2c2a;
+  color: var(--text);
 }
 
 .match-row-grade {
@@ -962,24 +1034,25 @@ button[type="submit"] {
   font-weight: 600;
 }
 
+/* 얇은 게이지 바(6px, 둥근 끝). 채움 폭·색은 등급→pct 규칙(MatchReport.tsx)에서 계산 */
 .match-bar-track {
-  height: 18px;
-  border-radius: 6px;
-  background: #eeece4;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
   overflow: hidden;
 }
 
 .match-bar-fill {
   height: 100%;
-  border-radius: 6px;
+  border-radius: 999px;
   transition: width 0.4s ease;
 }
 
 .match-row-reason {
   margin: 8px 0 0;
-  font-size: 13.5px;
+  font-size: 12.5px;
   line-height: 150%;
-  color: #6b6a64;
+  color: var(--muted);
 }
 
 .match-report-rest {

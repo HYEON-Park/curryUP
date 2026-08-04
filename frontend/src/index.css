@@ -18,6 +18,7 @@
   --bg: oklch(0.975 0.006 85);
   --surface: oklch(0.998 0.002 85);
   --surface-2: oklch(0.96 0.008 85);
+  --paper: oklch(0.99 0.008 85);     /* 매칭표 리포트 카드 종이 질감(따뜻한 크림) */
   --text: oklch(0.24 0.02 260);
   --muted: oklch(0.52 0.02 260);
   --border: oklch(0.9 0.01 85);
@@ -66,6 +67,7 @@
   --bg: oklch(0.19 0.03 260);
   --surface: oklch(0.25 0.03 260);
   --surface-2: oklch(0.29 0.03 260);
+  --paper: oklch(0.27 0.02 265);     /* 다크 종이색 */
   --text: oklch(0.95 0.01 260);
   --muted: oklch(0.66 0.02 260);
   --border: oklch(0.35 0.03 260);
@@ -120,7 +122,7 @@ h2 {
   font-size: 22px;
   line-height: 118%;
   letter-spacing: -0.24px;
-  margin: 0 0 8px;
+  margin: 5px 0 8px;
   @media (max-width: 1024px) {
     font-size: 19px;
   }

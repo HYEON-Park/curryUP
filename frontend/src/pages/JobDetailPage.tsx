@@ -118,10 +118,12 @@ export function JobDetailPage() {
       <h2>
         {job.company} — {job.title}
       </h2>
-      <p>{job.location}</p>
-      <a href={job.sourceUrl} target="_blank" rel="noreferrer" className="source-link">
-        원본 공고 보기
-      </a>
+      <div className="job-detail-meta">
+        <p>{job.location}</p>
+        <a href={job.sourceUrl} target="_blank" rel="noreferrer" className="source-link">
+          원본 공고 보기
+        </a>
+      </div>
 
       {activeTab ? (
         <>

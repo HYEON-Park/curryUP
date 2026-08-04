@@ -1,3 +1,5 @@
+import { matchTier } from "../utils/matchTier";
+
 interface Criterion {
   label: string;
   grade: string;
@@ -32,6 +34,17 @@ function gradeToPct(rawGrade: string): number | null {
   const vals = parts.map((p) => GRADE_BASE[p]).filter((v) => v !== undefined);
   if (vals.length === 0) return null;
   return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+}
+
+// 매칭 강도 → 고추 개수. 등급 '앞 글자' 기준: 강 🌶️×3 / 중 🌶️×2 / 약·하 🌶️×1.
+// '중강'·'중상'·'중약'처럼 중으로 시작하면 2개, '약~중'처럼 약으로 시작하면 1개.
+// 없음·무·시그널 없음은 고추 없이 등급 텍스트만 노출한다.
+function chiliCount(rawGrade: string): number {
+  const first = rawGrade.replace(/\s/g, "")[0];
+  if (first === "강") return 3;
+  if (first === "중") return 2;
+  if (first === "약" || first === "하") return 1;
+  return 0;
 }
 
 // pct 구간별 색 (강→약, 초록→빨강). 사용자 제공 팔레트 기준.
@@ -95,7 +108,12 @@ export function MatchReport({ text }: { text: string }) {
       <div className="match-chart">
         <div className="match-chart-head">
           <span className="match-chart-title">매칭률 사전 평가</span>
-          {overall !== null && <span className="match-chart-overall">종합 {overall}%</span>}
+          {overall !== null && (
+            <div className={`match-stamp tier-${matchTier(overall)}`}>
+              <span className="match-stamp-score">{overall}%</span>
+              <span className="match-stamp-tag">종합</span>
+            </div>
+          )}
         </div>
         <ul className="match-chart-list">
           {criteria.map((c, i) => {
@@ -105,7 +123,7 @@ export function MatchReport({ text }: { text: string }) {
                 <div className="match-row-head">
                   <span className="match-row-label">{c.label}</span>
                   <span className="match-row-grade" style={{ color }}>
-                    {c.grade}
+                    {"🌶️".repeat(chiliCount(c.grade))} {c.grade}
                   </span>
                 </div>
                 <div className="match-bar-track">
