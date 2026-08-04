@@ -849,6 +849,56 @@ button[type="submit"] {
   border-radius: 8px;
 }
 
+/* postingBody 원문이 없는 공고의 공고 탭 — 수집된 필드만 렌더 */
+.posting-summary {
+  background: var(--code-bg);
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.posting-summary-note {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.posting-summary-list {
+  margin: 0;
+}
+
+.posting-summary-list > div {
+  display: flex;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.posting-summary-list dt {
+  flex: 0 0 72px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.posting-summary-list dd {
+  margin: 0;
+  font-size: 14px;
+}
+
+.posting-summary-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.posting-summary-chip {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 13px;
+  color: var(--text);
+}
+
 /* 매칭표 탭: 매칭률 사전 평가 그래프 + 나머지 본문 */
 .match-report {
   white-space: normal;
