@@ -34,7 +34,7 @@ export interface JobPosting {
   collectedAt: string;
   documents: GeneratedDocuments | null;
   responsibilities?: string;         // ← 추가 권장 (담당업무 원문)
-  postingBody?: string;              // 모집공고 본문 원문(플레인 텍스트). 현재 잡코리아 신규 수집분만 채운다.
+  postingBody?: string;              // 모집공고 본문 원문(플레인 텍스트). 잡코리아는 목록 수집 시, 사람인은 상세 조회(fetchPostingBody)로 채운다. 이전 수집분은 UPDATE 시 백필된다.
   essayQuestions?: string[];         // ← 추가 권장 (자소서 문항)
   charLimit?: string;                // ← 추가 권장 (글자수 제한)
   isFavorite?: boolean;

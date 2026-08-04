@@ -22,7 +22,45 @@ function getAvailableTabs(job: JobPosting): Tab[] {
   // 내용이 있는 문서 탭만 노출한다. 매칭률 조회 배치가 매칭표만 채운 공고는 나머지 문서 필드가
   // 빈 문자열이라 매칭표 탭만 뜬다.
   const docTabs = DOC_TABS.filter((tab) => job.documents?.[tab]);
-  return [...docTabs, ...(job.postingBody ? (["posting"] as const) : [])];
+  // 공고 탭은 항상 노출한다. 크롤링 원문(postingBody)이 없으면 수집된 공고 정보를 대신 렌더한다.
+  return [...docTabs, "posting"];
+}
+
+// postingBody 원문이 없을 때, 수집 시 확보한 실제 필드만으로 공고 정보를 구성한다(원문 창작 금지).
+function PostingSummary({ job }: { job: JobPosting }) {
+  const rows: [string, string][] = [];
+  if (job.roleCategory) rows.push(["직무", job.roleCategory]);
+  if (job.location) rows.push(["근무지", job.location]);
+  if (job.deadline) rows.push(["마감", job.deadline]);
+  if (job.requiredYears) {
+    const { min, max } = job.requiredYears;
+    rows.push(["요구 연차", min === max ? `${min}년` : `${min}~${max}년`]);
+  }
+
+  return (
+    <div className="posting-summary">
+      <p className="posting-summary-note">
+        원문이 수집되지 않아 수집된 공고 정보를 표시합니다. 상세 요건은 원본 공고에서 확인하세요.
+      </p>
+      <dl className="posting-summary-list">
+        {rows.map(([label, value]) => (
+          <div key={label}>
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+      </dl>
+      {job.skills.length > 0 && (
+        <div className="posting-summary-skills">
+          {job.skills.map((skill) => (
+            <span key={skill} className="posting-summary-chip">
+              {skill}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function JobDetailPage() {
@@ -101,7 +139,11 @@ export function JobDetailPage() {
           {activeTab === "matchReport" ? (
             <MatchReport text={job.documents?.matchReport ?? ""} />
           ) : activeTab === "posting" ? (
-            <pre className="doc-content">{job.postingBody}</pre>
+            job.postingBody ? (
+              <pre className="doc-content">{job.postingBody}</pre>
+            ) : (
+              <PostingSummary job={job} />
+            )
           ) : (
             <pre className="doc-content">{job.documents?.[activeTab]}</pre>
           )}

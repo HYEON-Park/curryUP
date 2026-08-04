@@ -9,6 +9,7 @@ import {
   saveJobPostings,
 } from "../data/store.js";
 import { isMatch } from "../matching/matchEngine.js";
+import { backfillPostingBodies } from "./backfillPostingBody.js";
 import { findScraperFor } from "../scrapers/index.js";
 import type { JobPosting } from "../types.js";
 import { daysUntilDeadline } from "../utils/deadline.js";
@@ -64,6 +65,14 @@ export async function runScrapeAndMatch(userId: string): Promise<{
       const days = daysUntilDeadline(posting.deadline);
       if (days !== null && days <= thresholdDays) continue;
 
+      // 여기까지 통과 = 채택 확정. 채택된 신규 공고에만 상세 본문을 백필한다(요청 수 최소화).
+      // 목록 수집 단계에서 이미 본문을 채운 스크레이퍼(잡코리아)는 postingBody가 있으므로 건너뛴다.
+      // 본문 메서드가 없는 스크레이퍼(옵셔널 미구현)는 옵셔널 호출로 자동 스킵된다.
+      if (!posting.postingBody && scraper.fetchPostingBody) {
+        const body = await scraper.fetchPostingBody(posting.sourceUrl);
+        if (body) posting.postingBody = body;
+      }
+
       const job: JobPosting = { ...posting, id, documents: null };
       existingById.set(id, job);
       newlyMatched++;
@@ -71,6 +80,13 @@ export async function runScrapeAndMatch(userId: string): Promise<{
   }
 
   if (purgedSkipped > 0) console.log(`[scrape] 영구 삭제 이력 일치로 ${purgedSkipped}건 수집 제외`);
+
+  // 본문 없는 기존 공고 백필: 신규 채택 백필(line 70)은 이번에 새로 추가된 공고만 거친다.
+  // fetchPostingBody가 나중에 추가된 스크레이퍼(사람인) 탓에, 그 전에 수집돼 postingBody가 빈
+  // 기존 공고는 상세 뷰에 원문이 없다. 매 UPDATE마다 채워 넣는다(자기 종료형 — §backfillPostingBody).
+  const backfilled = await backfillPostingBodies([...existingById.values()]);
+  if (backfilled > 0) console.log(`[scrape] 기존 공고 postingBody 백필 ${backfilled}건`);
+
   await saveJobPostings(userId, [...existingById.values()]);
   return {
     collected,

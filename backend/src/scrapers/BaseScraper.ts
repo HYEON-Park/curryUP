@@ -11,6 +11,9 @@ export interface Scraper {
     url: string,
     knownSourceUrls: ReadonlySet<string>
   ): Promise<Omit<JobPosting, "id" | "documents">[]>;
+  // 개별 공고 상세 페이지에서 모집공고 본문(원문 텍스트)만 가져온다. 목록 수집(fetchPostings)과
+  // 분리해, 신규 채택된 공고에만 선택적으로 호출한다(요청 수 최소화). 미구현 스크레이퍼는 생략.
+  fetchPostingBody?(sourceUrl: string): Promise<string | null>;
   // 개별 공고가 아직 진행중인지(사이트에 살아있는지) 확인한다. 종료공고 배치가 매일 호출한다.
   // 미구현 스크레이퍼는 종료 판정에서 제외된다(대상 공고 유지).
   checkPostingStatus?(sourceUrl: string): Promise<PostingStatus>;

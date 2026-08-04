@@ -38,6 +38,9 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// 모집공고 본문 최대 길이(잡코리아 스크레이퍼와 동일 기준).
+const POSTING_BODY_MAX_LENGTH = 8000;
+
 // 사람인 상세 본문은 메인 뷰(view)가 아니라 view-detail 엔드포인트에서 서버 렌더로 내려온다.
 // .user_content 컨테이너에 담당업무·자격요건·우대사항·근무조건 등 JD 원문이 들어있다.
 function extractRecIdx(sourceUrl: string): string | null {
@@ -46,6 +49,21 @@ function extractRecIdx(sourceUrl: string): string | null {
   } catch {
     return null;
   }
+}
+
+function cleanBodyHtml($: cheerio.CheerioAPI, container: cheerio.Cheerio<any>): string {
+  container.find("style, script").remove();
+  const html = container.html() ?? "";
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|tr|li|h[1-6])>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/[ \t]+/g, " ")
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .join("\n");
 }
 
 // .job_sector 칩은 업종("웹개발","SI개발")과 직무("백엔드/서버개발")가 뒤섞여 순서가
@@ -144,6 +162,27 @@ export const SaraminScraper: Scraper = {
     }
 
     return postings;
+  },
+
+  async fetchPostingBody(sourceUrl: string): Promise<string | null> {
+    const recIdx = extractRecIdx(sourceUrl);
+    if (!recIdx) return null;
+    try {
+      const response = await axios.get<string>(`${BASE_URL}/zf_user/jobs/relay/view-detail`, {
+        params: { rec_idx: recIdx },
+        headers: { "User-Agent": USER_AGENT },
+        timeout: 20000,
+      });
+      const $ = cheerio.load(response.data);
+      const container = $(".user_content").first();
+      if (container.length === 0) return null;
+      const body = cleanBodyHtml($, container);
+      if (!body) return null;
+      return body.slice(0, POSTING_BODY_MAX_LENGTH);
+    } catch (error) {
+      console.warn(`[SaraminScraper] body fetch failed for ${sourceUrl}:`, error);
+      return null;
+    }
   },
 
   // 내려간 공고는 view-detail이 not-exist-view로 리다이렉트되며 404를 반환한다(실측 확인).
