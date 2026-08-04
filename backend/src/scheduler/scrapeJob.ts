@@ -8,11 +8,11 @@ import {
   saveJobPostings,
 } from "../data/store.js";
 import { runScrapeAndMatch } from "../pipeline/runScrapeAndMatch.js";
+import { runMatchCheckIfNeeded } from "./matchCheckJob.js";
 import { runRatingCheckNow } from "./ratingCheckJob.js";
 import { runManualJob, runScheduledJob, type RunRecord } from "./runLog.js";
-import { runWriteDocumentsIfNeeded } from "./writeDocumentsJob.js";
 
-const SCHEDULED_HOUR = 21;
+const SCHEDULED_HOUR = 7;
 const SCHEDULED_MINUTE = 0;
 const JOB_NAME = "scrape";
 
@@ -28,16 +28,17 @@ async function scrapeTask(userId: string): Promise<void> {
   await deleteImminentJobPostings(userId);
   const matchResult = await runScrapeAndMatch(userId);
   console.log("[scrapeJob] scrape+match:", matchResult);
-  // 수집 이후 기업 평점 체크를 무조건 이어서 수행한다.
-  // (UPDATE 버튼 흐름은 collect 라우트 + 프런트의 별도 평점 호출로 처리되므로 여기와 중복되지 않는다.)
+  // 대시보드 "공고 UPDATE" 버튼(collect 라우트)과 동일한 자동화 순서로 이어서 수행한다:
+  // 수집·매칭 → 평점 조회 → 매칭률 조회(Claude). 문서 작성 배치는 이 배치에서 실행하지 않는다.
   await runRatingCheckNow(userId);
-  // 평점 체크 종료 후: 신규 공고·미작성 즐겨찾기 공고가 있으면 Claude 문서 작성 배치를 무조건 실행한다.
-  await runWriteDocumentsIfNeeded(userId);
+  // 평점 조회가 끝난 뒤(평점을 참고해) 당일 수집분의 매칭률 평가표를 마지막 단계로 작성한다.
+  await runMatchCheckIfNeeded(userId);
 }
 
-// 매일 21:00 한 번, D-day 지난 공고를 정리하고 새 공고를 수집+매칭한 뒤 평점 갱신 → 문서 작성까지 이어서 수행한다.
+// 매일 07:00 한 번, D-day 지난 공고를 정리하고 새 공고를 수집+매칭한 뒤 평점 조회 → 매칭률 조회까지
+// 이어서 수행한다(대시보드 "공고 UPDATE" 버튼과 동일한 자동화 흐름).
+// 이후 08:00에는 별도 크론(writeDocumentsJob)이 당일 수집분 문서 작성 배치를 실행한다.
 // 배치 대상은 "가장 최근 로그인 + 프로필 충족" 유저 1명(getBatchUserId). 대상이 없으면 건너뛴다.
-// AI 문서 생성은 Claude Code(.claude/skills/write-documents)가 담당한다.
 export function startScrapeJob(): void {
   cron.schedule(`${SCHEDULED_MINUTE} ${SCHEDULED_HOUR} * * *`, async () => {
     const userId = await getBatchUserId();

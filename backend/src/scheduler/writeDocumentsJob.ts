@@ -1,7 +1,8 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { getJobPostings, hasProfile } from "../data/store.js";
+import cron from "node-cron";
+import { getBatchUserId, getJobPostings, hasProfile } from "../data/store.js";
 import { isCollectedToday, todayLocalKey } from "../utils/date.js";
 import { runManualJob, type RunRecord } from "./runLog.js";
 
@@ -9,6 +10,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "../../..");
 
 export const WRITE_DOCS_JOB_NAME = "write-documents";
+
+const SCHEDULED_HOUR = 8;
+const SCHEDULED_MINUTE = 0;
 
 // 문서생성 기준(.claude/skills/write-documents/SKILL.md와 동일):
 //   1) 신규 트랙: 오늘 수집 + 평점 2.8 이상 (+ 매칭률 70% 이상 — 매칭률은 Claude가 평가표 작성 시 판단)
@@ -96,4 +100,17 @@ export async function runWriteDocumentsIfNeeded(userId: string): Promise<RunReco
   console.log(`[writeDocumentsJob] 작성 대상 ${targetCount}건 — Claude 문서 작성 배치 시작`);
   const todayKey = todayLocalKey();
   return runManualJob(userId, WRITE_DOCS_JOB_NAME, () => runClaudeWriteDocuments(userId, todayKey));
+}
+
+// 매일 08:00, 스크래핑 배치(07:00)가 수집·평점·매칭률까지 마친 당일 공고에 대해 Claude 문서 작성
+// 배치를 실행한다. 대상 유저 1명(getBatchUserId). 대상이 없으면 건너뛴다.
+export function startWriteDocumentsJob(): void {
+  cron.schedule(`${SCHEDULED_MINUTE} ${SCHEDULED_HOUR} * * *`, async () => {
+    const userId = await getBatchUserId();
+    if (!userId) {
+      console.log("[writeDocumentsJob] 배치 대상 유저 없음 — 문서 작성 스케줄 건너뜀");
+      return;
+    }
+    await runWriteDocumentsIfNeeded(userId);
+  });
 }

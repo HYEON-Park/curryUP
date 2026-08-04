@@ -4,7 +4,7 @@ import { notifyWithLink } from "../notify/osNotifier.js";
 import { catchUpIfMissed, runManualJob, runScheduledJob, type RunRecord } from "./runLog.js";
 
 const SCHEDULED_HOUR = 9;
-const SCHEDULED_MINUTE = 30;
+const SCHEDULED_MINUTE = 0;
 const PORT = process.env.PORT || 4000;
 const JOB_NAME = "notify";
 
@@ -26,7 +26,7 @@ async function notifyTask(userId: string, force = false): Promise<void> {
   });
 }
 
-// 매일 09:30, 당일 00:00~09:29 사이 프로필을 수정하지 않았다면 알림.
+// 매일 09:00, 당일 00:00~08:59 사이 프로필을 수정하지 않았다면 알림.
 // 대상은 "가장 최근 로그인 + 프로필 충족" 유저 1명(getBatchUserId). 대상이 없으면 건너뛴다.
 export function startNotifyJob(): void {
   cron.schedule(`${SCHEDULED_MINUTE} ${SCHEDULED_HOUR} * * *`, async () => {
@@ -36,7 +36,7 @@ export function startNotifyJob(): void {
   });
 }
 
-// 백엔드가 09:30 이후에 켜졌고 당일 알림 처리 기록이 없다면 즉시 따라잡는다.
+// 백엔드가 09:00 이후에 켜졌고 당일 알림 처리 기록이 없다면 즉시 따라잡는다.
 export async function catchUpNotifyJob(): Promise<void> {
   const userId = await getBatchUserId();
   if (!userId) return;
