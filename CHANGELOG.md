@@ -2,9 +2,55 @@
 
 프로젝트 주요 변경 이력. 최신이 위. 각 항목에는 수정한 소스 파일명을 함께 기록한다.
 
+## 2026-08-04
+
+### 종료 공고 점검 배치 (매일 19:00) — 마감 공고 자동 비활성화
+> 기록 : 쌓이는 공고 + 조기 종료되는 공고를 걸러내기 위한 로직 추가 및 07:00pm 에 배치 자동화 
+- 매일 저녁 19:00 실행되는 `종료공고` 스케줄 배치 신설(`node-cron`). 현재 수집된(disabled 아닌) 공고를 하나씩 사이트에서 확인해, 사이트에서 내려간(마감) 공고만 `disabled`로 표시한다. 진행중·판단불가(unknown)는 건드리지 않는다(오탐 방지 — 자동 삭제는 하지 않고 사용자가 카드의 ✕로 수동 삭제).
+- 종료 판별은 스크레이퍼별 `checkPostingStatus`(신규, `Scraper` 옵셔널 메서드): 사람인은 `view-detail` 404(not-exist-view)=종료, `.user_content` 존재=진행중. 잡코리아는 상세 엔드포인트 5xx/에러페이지=종료, 본문 추출 성공=진행중. `"마감"` 텍스트는 정상 공고에도 나와 신호로 쓰지 않음(실측 확인). 실측 4/4(사람인·잡코 × open/closed) 통과.
+- 관리자 배치로그에 기록되고, 종료 처리된 공고가 있는 행은 클릭 토글로 종료 목록을 펼쳐 확인(`RunRecord.closedJobs` 신규 필드 재사용 — `attachClosedJobs`로 완료 레코드에 부착). 관리자에 "지금 종료 점검" 수동 실행 버튼 추가.
+- 대시보드 카드: `disabled` 공고는 흐리게 비활성(이동·즐겨찾기 차단) + "종료" 뱃지 + ✕(수동 삭제)만 동작. 종료 공고는 추천 팝업·본문 백필에서도 제외.
+- 검증: 백엔드·프런트 `tsc --noEmit` 통과.
+- 신규(백엔드): `src/scheduler/closedCheckJob.ts`. 수정(백엔드): `src/scrapers/BaseScraper.ts`(`PostingStatus`·`checkPostingStatus?`), `src/scrapers/SaraminScraper.ts`·`src/scrapers/JobKoreaScraper.ts`, `src/scheduler/runLog.ts`(`closedJobs`·`attachClosedJobs`), `src/server.ts`, `src/routes/admin.ts`, `src/routes/jobs.ts`(추천 제외), `src/types.ts`(`disabled`·`closedAt`). 수정(프런트): `src/components/JobCard.tsx`, `src/pages/AdminBatchPage.tsx`, `src/api/client.ts`, `src/types.ts`, `src/App.css`.
+
+### 기존 공고 모집공고 본문(postingBody) 백필 자동화
+> 기록 : 공고도 플랫폼 내에서 확인할 수 있게 편의성을 고려 + 사람인은 url로 상세공고를 수집 할 수 없어 추가로 채워야함 자동 재충전 확인.
+- 사람인 `fetchPostingBody`가 나중에 추가돼, 그 이전에 수집된 공고는 상세 뷰에 원문이 없었다(신규 채택 백필은 새 공고만 거침 — `runScrapeAndMatch.ts:56`에서 기존 공고 skip). UPDATE 흐름 말미에 본문 없는 기존 공고를 뒤늦게 채우는 백필 패스를 추가. 자기 종료형(한 번 채우면 다음부터 건너뜀), 300ms 간격, `fetchPostingBody` 미구현 스크레이퍼·`disabled` 공고는 스킵.
+- 검증: 일회성 실행으로 34건 채움(본문 있음 19→53), 오늘 수집분 전체 확보. 재시작 서버에서 대조군(살아있는 공고 본문 비운 뒤 UPDATE)으로 자동 재충전 확인.
+- 신규(백엔드): `src/pipeline/backfillPostingBody.ts`. 수정(백엔드): `src/pipeline/runScrapeAndMatch.ts`, `src/types.ts`(`postingBody` 주석 정정).
+
+## 2026-08-03
+
+### 사람인 모집공고 본문 수집 + 공고 탭 항상 노출
+- 사람인 스크레이퍼에 상세 본문 수집 메서드(`fetchPostingBody`) 추가. 메인 뷰가 아닌 `zf_user/jobs/relay/view-detail`(rec_idx) 엔드포인트의 `.user_content`에서 JD 원문을 뽑아 태그 정리 후 플레인 텍스트로 반환(최대 8000자, 잡코리아 기준과 동일). `Scraper` 인터페이스에는 옵셔널(`fetchPostingBody?`)로 선언 — 미구현 스크레이퍼는 자동 스킵
+- 본문 백필을 **채택 확정 시점**에 배선: `runScrapeAndMatch`에서 공고가 모든 필터(매칭·마감·숨김·영구삭제)를 통과한 직후에만 `fetchPostingBody`를 호출해 요청 수 최소화. 잡코리아는 목록 수집 단계에서 이미 `postingBody`를 채우므로 `!posting.postingBody` 조건으로 자동 스킵
+- 공고 상세 화면의 **공고 탭을 항상 노출**하도록 변경(이전엔 `postingBody`가 있을 때만 노출). 원문이 없으면 수집 시 확보한 실제 필드(직무·근무지·마감·요구 연차·스킬 칩)만으로 `PostingSummary`를 렌더 — 원문 창작 없이 "원문 미수집" 안내와 함께 표시
+- 검증: 백엔드 `tsc --noEmit` 통과(에러 0)
+- 수정(백엔드): `src/scrapers/BaseScraper.ts`, `src/scrapers/SaraminScraper.ts`, `src/pipeline/runScrapeAndMatch.ts`. 수정(프런트): `src/pages/JobDetailPage.tsx`, `src/App.css`
+
+### 대시보드 총 건수 푸터 + 다크모드 추천 모달 보정 + 워드마크 홈 링크
+> 기록 : 가시성 + 편의성을 높이기 위한 아이디어 진행
+- 대시보드 하단에 "총 N개"(현재 필터 기준 표시 건수)를 추가하고, pagination 줄 안 **가장 우측**으로 정렬. 이전/다음 컨트롤은 중앙 정렬을 유지하도록 `.pagination-controls`로 분리, 카운트는 `.pagination`(position:relative, min-height) 안에서 `position:absolute; right:0`으로 고정 — 페이지가 1개라 컨트롤이 없을 때도 카운트는 우측에 표시
+- 다크모드 추천 팝업 가독성 보정: 모달 배경을 페이지 배경보다 한 단계 밝게(`oklch(0.34 0.03 260)`), 추천 카드 기본 테두리 흰색(호버 시 골드 유지)
+- TopBar 워드마크(`curryUP`)를 홈(`/`=대시보드) 링크(`react-router` `Link`)로 감쌈. `.wordmark-link`로 링크 기본 밑줄·색 제거해 외형 유지
+- 수정: `frontend/src/pages/DashboardPage.tsx`, `frontend/src/App.tsx`, `frontend/src/App.css`
+
+### write-documents SKILL 문체 규칙 개편
+> 기록 : 구독료 사용하는 것만큼의 편리한 자동화 시키기 이 프로젝트의 키포인트 기능중 하나...
+- §3을 "인간화 리라이팅(단일 톤)"에서 **문항별 문체 차등**으로 개편: 공통 규칙(선언·슬로건형 소제목·두괄식·분량·금지표현·경력자 압축) + 지원동기·포부는 **정중한 문어체**, 직무역량은 **단문 허용·수치 중심(Action 굵은 불릿 3개)** 으로 분리
+- §7 자가 검증 체크리스트를 새 문체 기준으로 재작성(문항별 소제목·두괄식·문어체·Action 불릿·프로필에 없는 사실 창작 0건·verified:false 수치 "약" 처리 등)
+- 부록 "문체 참고 예시"(지원동기 문어체 / 직무역량 단문·수치) 추가 — 예시 회사명·수치는 생성 결과에 사용 금지 명시
+- 수정: `.claude/skills/write-documents/SKILL.md`
+
+### write-documents SKILL 멀티테넌트 경로 정합 + 프로필 seed 템플릿
+- `.claude/skills/write-documents/SKILL.md`가 8곳에서 레거시 단일 파일(`jobPostings.json`·`userProfile.json`)을 가리키던 것을 **"실행 시 주입되는 per-user 경로"**(`jobPostings/{userId}.json`·`profiles/{userId}.json`)로 교체 + "레거시 읽지 말 것" 명시. `writeDocumentsJob.ts`가 프롬프트로 주입하는 경로와 SKILL 지시를 한 방향으로 정렬(남의 프로필로 자소서 쓰거나 산출물을 레거시 파일로 흘릴 위험 차단)
+- 프로필 seed 템플릿(`backend/src/data/userProfile.example.json`) 신설 — 평평 `UserProfile` 스키마, 마스킹 플레이스홀더(실데이터 미포함)
+- 수정: `.claude/skills/write-documents/SKILL.md`. 신규: `backend/src/data/userProfile.example.json`
+
 ## 2026-07-28
 
 ### 이메일 로그인 + 유저별 파일 격리(멀티테넌트) 전환
+> 기록 : 플랫폼화 시키고 싶어 필수적으로 추가했음 다수가 편리하게 사용하길 바라는 마음 
 - 단일 유저 앱을 이메일/비밀번호 로그인 기반 멀티테넌트로 전환. DB 없이 파일 저장소만 확장.
 - **이메일 인증(링크 방식)**: 가입 시 인증 토큰 생성 → 메일 발송(`nodemailer`), 인증 전 로그인 차단(403). 인증 링크(`GET /api/auth/verify`) 클릭 시 완료 후 `/login?verified=1`로 리다이렉트. 재발송 `POST /api/auth/resend`. 인증 링크 base URL은 **LAN IP**(`utils/network.getBaseUrl`, 예: `http://192.168.110.160:4000`)로 생성해 같은 네트워크의 폰에서도 열림. SMTP는 `.env`(SMTP_HOST/PORT/SECURE/USER/PASS/MAIL_FROM); 미설정 시 인증 링크를 응답(devLink)·서버 로그로 노출하는 개발 폴백. `users.json`에 `emailVerified`·`verifyToken`·`verifyExpires` 필드 추가. JWT 시크릿은 ESM import 순서 때문에 lazy 로드로 수정(.env 반영). 신규: `src/auth/mailer.ts`, `src/utils/network.ts`.
 - **인증**: `POST /api/auth/signup`(bcryptjs cost 10, 비번 8~64자)·`/login`(JWT 발급)·`GET /me`(hasProfile 반환). `authMiddleware`가 Bearer 토큰 검증 후 `req.user={userId,email}` 주입. JWT_SECRET은 `backend/.env`.
@@ -51,6 +97,7 @@
 - 수정: `backend/src/scheduler/matchCheckJob.ts`, `backend/src/scheduler/writeDocumentsJob.ts`, `backend/src/routes/jobs.ts`, `backend/src/data/store.ts`, `backend/src/scheduler/runLog.ts`
 
 ### 작업 이력 관리 문서(PROGRESS.md) 도입
+> 기록 : 클로드랑 친해지기 위한 조건 하나 progress.md를 활용한다
 - "현재 작업 중 / 다음 할 일 / 최근 완료 / 주요 결정" 4개 섹션으로 세션 간 작업 상태를 인계. 세션 시작 시 먼저 읽고, 주요 단계 완료 시 갱신
 - CHANGELOG(변경 이력)·README(구조 설명)와 역할 분리
 - 신규: `PROGRESS.md`
