@@ -1,7 +1,7 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
 import type { JobPosting } from "../types.js";
-import type { Scraper } from "./BaseScraper.js";
+import type { PostingStatus, Scraper } from "./BaseScraper.js";
 
 const BASE_URL = "https://www.jobkorea.co.kr";
 const USER_AGENT =
@@ -142,6 +142,26 @@ function extractBodyText(html: string): string | null {
     .join("\n");
 
   return text || null;
+}
+
+// 공고 진행/마감은 눈에 보이는 문구·버튼(클라이언트 렌더)이 아니라 RSC 데이터의
+// statusType 값으로만 확실히 구분된다(실측: 마감="CLOSE", 진행="POSTING").
+// "상시채용"이어도 실제로 내려가면 statusType이 CLOSE로 바뀐다. 추천공고 블록에는
+// 이 키가 없어 본문(메인 공고) 값만 잡힌다 — 첫 매치를 사용한다.
+function extractStatusType(html: string): "CLOSE" | "POSTING" | null {
+  const pushRe = /self\.__next_f\.push\(\[1,"((?:[^"\\]|\\.)*)"\]\)/g;
+  let match: RegExpExecArray | null;
+  while ((match = pushRe.exec(html))) {
+    let decoded: string;
+    try {
+      decoded = JSON.parse(`"${match[1]}"`);
+    } catch {
+      continue;
+    }
+    const m = decoded.match(/"statusType"\s*:\s*"(CLOSE|POSTING)"/);
+    if (m) return m[1] as "CLOSE" | "POSTING";
+  }
+  return null;
 }
 
 async function fetchDetail(
@@ -286,5 +306,30 @@ export const JobKoreaScraper: Scraper = {
     }
 
     return postings;
+  },
+
+  // GI_Read 페이지의 RSC 데이터 statusType으로 판정한다(실측: 마감=CLOSE, 진행=POSTING).
+  // Ifrm 본문은 마감이어도 200+본문을 그대로 줘서 신호로 못 쓴다(실측 확인). 눈에 보이는
+  // "마감"·마감버튼은 클라이언트 렌더라 서버 HTML에 없고, "마감" 문자열은 정상 공고에도 있다.
+  // 5xx(내려간 공고)는 closed, statusType을 못 찾으면 unknown(유지)으로 둔다.
+  async checkPostingStatus(sourceUrl: string): Promise<PostingStatus> {
+    const gnoMatch = sourceUrl.match(/GI_Read\/(\d+)/);
+    if (!gnoMatch) return "unknown";
+    try {
+      const response = await axios.get<string>(`${BASE_URL}/Recruit/GI_Read/${gnoMatch[1]}`, {
+        headers: { "User-Agent": USER_AGENT },
+        timeout: 15000,
+        validateStatus: () => true,
+      });
+      if (response.status >= 500) return "closed";
+      if (response.status >= 200 && response.status < 300) {
+        const statusType = extractStatusType(response.data);
+        if (statusType === "CLOSE") return "closed";
+        if (statusType === "POSTING") return "open";
+      }
+      return "unknown";
+    } catch {
+      return "unknown";
+    }
   },
 };
