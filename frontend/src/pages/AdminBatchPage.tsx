@@ -373,14 +373,14 @@ function BatchMonitoringTab() {
             >
               오늘 수집 초기화 후 재수집
             </button>
-            <button
+           {/* <button
               disabled={pending !== null}
               onClick={() =>
                 handleAction("scrape-all", "전체 초기화 후 재수집", () => runScrapeBatch("all"))
               }
             >
               전체 초기화 후 재수집
-            </button>
+            </button>*/}
           </div>
         </div>
 

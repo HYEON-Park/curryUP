@@ -13,10 +13,11 @@
 - 공고마다 요구 사항이 달라, 자기소개서를 처음부터 다시 쓰는 데 많은 시간이 소요된다.
 
 **접근 방식**
-1. 크롤러가 매일 22:00 사람인·잡코리아에서 공고를 자동 수집한다.
-2. 경력·기술 스택·희망 직무 등 사용자 프로필과 비교해 맞는 공고만 필터링하고, 기업 평점을 조회한다.
-3. 매칭된 공고(신규 고평점·즐겨찾기)에 대해 Claude Code가 자기소개서·소개·경력사항과 매칭표 초안을 자동 작성한다.
-4. 웹 대시보드에서 공고와 생성된 문서를 한 곳에서 확인한다.
+1. 크롤러가 매일 07:00 사람인·잡코리아에서 공고를 자동 수집한다.
+2. 경력·기술 스택·희망 직무 등 사용자 프로필과 비교해 맞는 공고만 필터링하고, 기업 평점·매칭률을 조회한다.
+3. 이어서 08:00에 매칭된 공고(신규 고평점·즐겨찾기)에 대해 Claude Code가 자기소개서·소개·경력사항과 매칭표 초안을 자동 작성한다.
+4. 매일 19:00에는 사이트에서 내려간(마감) 공고를 자동 감지해 비활성 처리한다.
+5. 웹 대시보드에서 공고와 생성된 문서를 한 곳에서 확인한다.
 
 ---
 
@@ -74,23 +75,38 @@ npm start
   → 회원가입 → 이메일 인증(링크) → 로그인(JWT). 프런트는 새로고침·직접 진입 시 GET /api/auth/me로
     인증·프로필 상태를 확인하고, 프로필 미작성(hasProfile=false)이면 /profile/setup으로 강제 이동.
 
-[매일 21:00] 배치 체인 (scrape → ratingCheck → write-documents)
-  대상 유저 = "가장 최근 로그인 + 프로필 필수값 충족" 1명(getBatchUserId). 로컬 headless Claude CLI
-  과부하를 피하려 전체 유저를 돌리지 않는다. 대상이 없으면 스케줄을 건너뛴다.
+모든 스케줄 배치의 대상 유저 = "가장 최근 로그인 + 프로필 필수값 충족" 1명(getBatchUserId).
+로컬 headless Claude CLI 과부하를 피하려 전체 유저를 돌리지 않는다. 대상이 없으면 스케줄을 건너뛴다.
+
+[매일 07:00] 스크래핑 체인 (scrape → ratingCheck → matchCheck)
+  대시보드 [공고 UPDATE] 버튼과 동일한 자동화 순서다.
   ① 스크래퍼
     → 사람인 / 잡코리아 공고 수집
     → 프로필 기반 매칭 필터링 (경력 ±2년, 지역, 기술 스택)
     → D-0 / D-1 마감 공고 자동 제외
+    → 사람인 신규 채택분은 상세 본문(postingBody) 조회, 기존 공고는 소급 백필
     → jobPostings/{userId}.json 저장
   ② 평점 조회
     → 수집 직후 이어서 기업 평점 갱신
-  ③ 문서 작성 (Claude Code, 조건부)
-    → 문서 미생성 공고 중 신규 고평점(평점 2.8+·매칭률 70%+) 또는 즐겨찾기 공고가 있으면
-    → Claude CLI(headless)를 자동 실행해 자기소개서 / 소개 / 경력사항 / 매칭표 작성
+  ③ 매칭률 조회 (Claude Code)
+    → 오늘 수집분 중 매칭표(matchReport) 없는 공고에 매칭률 사전 평가표 작성
+
+[매일 08:00] 문서 작성 배치 (Claude Code, 조건부)
+  → 07:00 체인이 매칭률까지 마친 당일 수집분 중, 신규 고평점(평점 2.8+·매칭률 70%+) 또는
+    즐겨찾기 공고가 있으면 Claude CLI(headless)를 자동 실행해 자기소개서 / 소개 / 경력사항 작성
+    (matchReport가 이미 있으면 재사용)
+
+[매일 09:00] 프로필 알림 (notify)
+  → 당일 프로필을 아직 수정하지 않았으면 OS 알림으로 최신화 요청
+
+[매일 19:00] 종료공고 점검 배치
+  → 수집된 공고를 사이트에서 확인해 마감된 공고만 disabled 처리
+    (사람인 view-detail 404 / 잡코리아 RSC statusType=CLOSE로 판정, 판단 불가·진행중은 유지)
+    → 대시보드에서 흐리게·✕만 노출, 추천·본문 백필에서 제외. 자동 삭제는 하지 않는다.
 
 [수동 UPDATE — 대시보드 [공고업데이트] 버튼]
   ① 수집 → ② 평점 조회 → ③ 매칭률 조회 (Claude Code) → ④ 추천 공고 팝업
-    → ③ 오늘 수집분 중 매칭표(matchReport) 없는 공고에 매칭률 사전 평가표만 작성
+    → 07:00 스크래핑 체인과 동일한 ①~③ 순서
     → ④ 오늘 수집분 중 매칭률 70% 이상 공고가 있으면 대시보드 중앙 팝업으로 제안
        (카드 클릭 → 상세를 새 탭으로 / 닫으면 같은 업데이트 세션에선 재노출 안 함)
 
@@ -119,9 +135,10 @@ npm start
 |------|------|
 | `backend/src/scrapers/` | 사람인·잡코리아 스크래퍼. `BaseScraper` 추상 클래스 기반으로 확장 가능 |
 | `backend/src/matching/matchEngine.ts` | 프로필과 공고를 비교해 매칭 여부 판단. 경력(±2년) AND 지역 AND (스킬 OR 직무) |
-| `backend/src/scheduler/` | node-cron 기반 스케줄러. scrape(21:00) → ratingCheck → write-documents 체인, notify(09:30). 대상은 `getBatchUserId`(최근 로그인 유저) |
-| `backend/src/scheduler/writeDocumentsJob.ts` | scrape·평점 조회 종료 후 대상 공고가 있으면 Claude CLI(headless)를 실행해 문서 작성 |
-| `backend/src/scheduler/matchCheckJob.ts` | 수동 UPDATE 3단계. 오늘 수집분 중 매칭표 없는 공고에 Claude CLI(headless)로 매칭률 사전 평가표 작성 |
+| `backend/src/scheduler/` | node-cron 기반 스케줄러. scrape(07:00, → ratingCheck → matchCheck), write-documents(08:00), notify(09:00), closed-check(19:00). 대상은 `getBatchUserId`(최근 로그인 유저) |
+| `backend/src/scheduler/writeDocumentsJob.ts` | 매일 08:00 크론(`startWriteDocumentsJob`). 당일 수집분 대상 공고가 있으면 Claude CLI(headless)를 실행해 문서 작성. 관리자 수동 실행(POST /ai/run)도 같은 함수 재사용 |
+| `backend/src/scheduler/matchCheckJob.ts` | 07:00 스크래핑 체인 및 수동 UPDATE의 3단계. 오늘 수집분 중 매칭표 없는 공고에 Claude CLI(headless)로 매칭률 사전 평가표 작성 |
+| `backend/src/scheduler/closedCheckJob.ts` | 매일 19:00(`startClosedCheckJob`). 수집 공고를 사이트에서 점검해 마감분만 `disabled` 처리. 스크래퍼별 `checkPostingStatus`(사람인 404 / 잡코리아 RSC statusType), 오탐 방지로 unknown·진행중은 유지 |
 | `.claude/skills/write-documents/` | Claude Code가 공고별 매칭표·자기소개서·소개·경력사항을 작성하는 스킬. `writeDocumentsJob`이 headless로 호출 |
 | `backend/src/data/store.ts` | JSON 파일 기반 데이터 레이어. **유저별 개별 파일**(`profiles/`·`jobPostings/`·`hiddenJobPostings/`·`purgedJobHistory/`·`runLog/{userId}.json`)로 격리 저장. `users.json`(계정), `getBatchUserId`(배치 대상 = 최근 로그인 유저) |
 | `backend/src/auth/jwt.ts` | JWT 서명·검증 + `authMiddleware`(Bearer 토큰 → `req.user={userId,email}`) |
@@ -146,15 +163,15 @@ npm start
 **위치:** 문서 본문 작성과 매칭률 평가는 Claude Code가 담당한다.
 
 - `.claude/skills/write-documents/SKILL.md` — 공고별 매칭표·자기소개서·소개·경력사항 작성 프롬프트 체계와 실행 절차
-- `backend/src/scheduler/writeDocumentsJob.ts` — scrape·평점 조회 종료 후 대상 공고가 있으면 `claude -p`(headless)를 실행
-- `backend/src/scheduler/matchCheckJob.ts` — 수동 UPDATE 흐름에서 매칭률 사전 평가표만 먼저 작성하는 `claude -p`(headless) 배치. 이후 문서 작성 배치가 이 매칭률을 재사용한다
+- `backend/src/scheduler/writeDocumentsJob.ts` — 매일 08:00 크론으로 당일 수집분 대상이 있으면 `claude -p`(headless)를 실행
+- `backend/src/scheduler/matchCheckJob.ts` — 07:00 스크래핑 체인·수동 UPDATE에서 매칭률 사전 평가표만 먼저 작성하는 `claude -p`(headless) 배치. 이후 08:00 문서 작성 배치가 이 매칭률을 재사용한다
 
 **이유:**
 
 | 선택 | 이유 |
 |------|------|
 | Claude Code 헤드리스 배치 | 별도 API 키·서버 인프라 없이 로컬 CLI로 고품질 초안 생성 |
-| scrape·평점 조회 뒤 체이닝 | 수집·평점이 끝난 대상만 이어서 실행해 브라우저 상태와 무관하게 항상 수행 |
+| scrape·평점·매칭률 뒤 문서작성 분리 | 07:00 체인이 매칭률까지 마친 뒤 08:00에 문서를 작성해, 브라우저 상태와 무관하게 항상 수행하되 무거운 문서작성은 시각을 분리 |
 | 공고별 개별 생성 | 공고의 요구 기술·직무 키워드를 컨텍스트로 주입해 맞춤형 초안 생성 |
 
 ---
@@ -165,8 +182,8 @@ npm start
 - 개발 편의를 위해 Express가 Vite를 미들웨어로 내장해 API와 프론트를 하나의 포트로 서빙한다.
 - 프로덕션에서는 `frontend/dist` 정적 빌드를 그대로 서빙하므로 별도 웹 서버 불필요.
 
-**6.2 배치 체이닝**
-- scrape(22:00) → 평점 조회 → 문서 작성을 백엔드에서 이어서 실행해, 브라우저 탭 상태와 무관하게 밤사이 공고 수집부터 문서 초안까지 한 번에 준비되도록 설계했다.
+**6.2 배치 시각 분리 (07:00 체인 + 08:00 문서작성)**
+- 07:00 스크래핑 체인(수집 → 평점 조회 → 매칭률 조회)으로 대시보드 [공고 UPDATE] 버튼과 동일한 결과를 자동으로 만든다. 무거운 문서 작성(Claude CLI headless)은 08:00 별도 크론으로 떼어내, 수집·평가와 생성을 시각으로 분리하면서도 브라우저 탭 상태와 무관하게 아침 출근 전 공고 수집부터 문서 초안까지 준비되도록 설계했다.
 
 **6.3 Soft Delete 구조**
 - 대시보드에서 삭제한 공고는 `hiddenJobPostings.json`으로 이동해 복구 가능하게 유지하고, 관리자가 명시적으로 영구 삭제(Hard Delete)를 선택해야 완전히 제거된다.
@@ -188,6 +205,10 @@ npm start
 **6.8 이메일 인증 (링크 방식) + LAN IP**
 - 회원가입 시 인증 토큰을 발급해 메일로 링크를 보내고, 인증 전에는 로그인을 차단(403)한다. 인증 링크의 base URL은 `localhost` 대신 **LAN IP**로 구성해, 같은 네트워크의 휴대폰에서 메일 링크를 눌러도 인증이 완료되도록 했다.
 - 프런트 라우트 가드는 로그인 응답 상태에만 의존하지 않고, 새로고침·직접 진입 시 항상 `GET /api/auth/me`로 최신 `hasProfile` 상태를 확인한다.
+
+**6.9 종료공고 자동 감지 (오탐 방지 우선)**
+- 매일 19:00 배치가 수집 공고를 사이트에서 직접 조회해 마감분만 `disabled`로 표시한다. 판정은 눈에 보이는 "마감" 문구가 아니라 구조화된 신호(사람인 `view-detail` 404 / 잡코리아 RSC `statusType=CLOSE`)로만 한다 — 정상 공고에도 "마감" 문자열이 있어 오탐하기 때문이다.
+- 판단 불가(`unknown`)·진행중은 건드리지 않고, **자동 삭제도 하지 않는다.** 종료 공고는 대시보드에서 흐리게·✕(수동 삭제)만 노출하고 추천·본문 백필 대상에서 제외한다. 삭제 여부는 사용자가 결정한다(soft delete와 동일하게 복구 가능).
 
 ---
 
