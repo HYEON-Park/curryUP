@@ -3,7 +3,7 @@ import type { JobPosting } from "../types";
 import { parseMatchOverall } from "../utils/matchReport";
 
 // 매칭률 임계값(이상). 0 = 전체.
-export type MatchThreshold = 0 | 50 | 70 | 90;
+export type MatchThreshold = 0 | 50 | 60 | 70 | 80;
 
 export interface JobFilters {
   searchTerm: string;

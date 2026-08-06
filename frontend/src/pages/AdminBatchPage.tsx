@@ -18,13 +18,13 @@ import type { HiddenJobPosting, JobPosting, RunRecord } from "../types";
 import { ensureProfileOrRedirect } from "../utils/profileGuard";
 
 const JOB_LABELS: Record<string, string> = {
-  scrape: "공고 스크래핑 배치",
+  scrape: "오늘 공고 수집",
   collect: "대시보드 수동 수집",
-  notify: "오전 프로필 알림 배치",
+  /*notify: "오전 프로필 알림 배치",*/
   aiBatch: "야간 AI 문서 생성 배치",
   평점조회: "평점 조회 배치",
-  매칭률조회: "매칭률 조회 배치 (Claude)",
-  "write-documents": "문서 작성 배치 (Claude)",
+  매칭률조회: "매칭률 조회 배치",
+  "write-documents": "문서 작성 배치",
   종료공고: "종료 공고 점검 배치",
 };
 
@@ -371,7 +371,7 @@ function BatchMonitoringTab() {
                 )
               }
             >
-              오늘 수집 초기화 후 재수집
+              공고 수집 배치
             </button>
            {/* <button
               disabled={pending !== null}
@@ -384,7 +384,7 @@ function BatchMonitoringTab() {
           </div>
         </div>
 
-        <div className="admin-control-row">
+        {/*<div className="admin-control-row">
           <span>{JOB_LABELS.notify}</span>
           <div className="admin-control-actions">
             <button
@@ -396,7 +396,7 @@ function BatchMonitoringTab() {
               즉시 발송하기
             </button>
           </div>
-        </div>
+        </div>*/}
 
         <div className="admin-control-row">
           <span>{JOB_LABELS.매칭률조회}</span>
@@ -412,7 +412,7 @@ function BatchMonitoringTab() {
                 )
               }
             >
-              지금 매칭률 조회 (Claude)
+              매칭률 조회 배치
             </button>
           </div>
         </div>
@@ -431,7 +431,7 @@ function BatchMonitoringTab() {
                 )
               }
             >
-              지금 문서 작성 (Claude)
+              문서 작성 배치
             </button>
           </div>
         </div>
@@ -521,13 +521,13 @@ function BatchMonitoringTab() {
       {totalPages > 1 && (
         <div className="pagination">
           <div className="pagination-nav">
-            <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+            <button class="topbar-logout" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
               이전
             </button>
             <span>
-              {page} / {totalPages}
+               {page} / {totalPages}
             </span>
-            <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+            <button class="topbar-logout" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
               다음
             </button>
           </div>

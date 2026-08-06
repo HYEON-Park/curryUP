@@ -11,7 +11,7 @@ const REPO_ROOT = path.resolve(__dirname, "../../..");
 
 export const WRITE_DOCS_JOB_NAME = "write-documents";
 
-const SCHEDULED_HOUR = 8;
+const SCHEDULED_HOUR = 21;
 const SCHEDULED_MINUTE = 0;
 
 // 문서생성 기준(.claude/skills/write-documents/SKILL.md와 동일):

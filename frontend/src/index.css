@@ -89,6 +89,7 @@
 
 #root {
   width: 100%;
+  max-width: 100%;
   min-height: 100svh;
   display: flex;
   flex-direction: column;
@@ -98,8 +99,11 @@
   color: var(--text);
 }
 
+html,
 body {
   margin: 0;
+  max-width: 100%;
+  overflow-x: hidden; /* 서브픽셀·패딩 반올림으로 생기는 가로 넘침(예: 모바일 430→430.4) 클램프 */
 }
 
 h1,

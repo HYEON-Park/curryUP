@@ -83,9 +83,16 @@ jobsRouter.get("/recommendations", async (req, res) => {
     })
     .sort(compareJobs);
 
-  const latestCollect = await getLatestRun(userId, "collect", "manual");
+  // 세션 식별: 오늘 데이터를 만든 수집 파이프라인의 최신 실행.
+  // 수동 UPDATE(collect·manual)든 스케줄 배치(scrape·scheduled)든 같은 산출(매칭표)을 내므로 둘 다 인정한다.
+  // (예전엔 collect·manual만 인정해, 07시 스케줄 scrape만 돈 날엔 sessionId=null이라 팝업이 안 떴다.)
   // runLog의 date도 같은 로컬 날짜 기준이라 그대로 비교한다.
-  const sessionId = latestCollect && latestCollect.date === todayLocalKey() ? latestCollect.id : null;
+  const today = todayLocalKey();
+  const pipelineRuns = await Promise.all([getLatestRun(userId, "collect"), getLatestRun(userId, "scrape")]);
+  const sessionRun = pipelineRuns
+    .filter((r): r is NonNullable<typeof r> => r !== null && r.date === today)
+    .sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0];
+  const sessionId = sessionRun ? sessionRun.id : null;
 
   res.json({ sessionId, items });
 });

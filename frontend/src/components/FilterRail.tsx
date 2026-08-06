@@ -11,8 +11,9 @@ interface FilterRailProps {
 const THRESHOLDS: { label: string; value: MatchThreshold }[] = [
   { label: "전체", value: 0 },
   { label: "50% 이상", value: 50 },
+  { label: "60% 이상", value: 60 },
   { label: "70% 이상", value: 70 },
-  { label: "90% 이상", value: 90 },
+  { label: "80% 이상", value: 80 },
 ];
 
 // 대시보드 좌측 필터 레일. 지역 셀렉트 + 매칭률(threshold) 셀렉트.

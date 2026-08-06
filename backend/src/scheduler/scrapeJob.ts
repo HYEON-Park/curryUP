@@ -12,7 +12,7 @@ import { runMatchCheckIfNeeded } from "./matchCheckJob.js";
 import { runRatingCheckNow } from "./ratingCheckJob.js";
 import { runManualJob, runScheduledJob, type RunRecord } from "./runLog.js";
 
-const SCHEDULED_HOUR = 7;
+const SCHEDULED_HOUR = 20;
 const SCHEDULED_MINUTE = 0;
 const JOB_NAME = "scrape";
 
