@@ -243,7 +243,8 @@
       //   예) const APP_URL = "https://curryup.example.com";
       //   로컬에서만 테스트할 땐 "http://localhost:4000" 도 가능합니다.
       // ────────────────────────────────────────────────────────────
-      const APP_URL = "http://localhost:4000";
+      // 현재 값은 ngrok 터널 임시 주소입니다. 터널을 다시 열면 도메인이 바뀌므로 그때마다 이 줄을 갱신하세요.
+      const APP_URL = "https://mutilator-slider-grudging.ngrok-free.dev";
 
       const btn = document.getElementById("open-app");
       btn.href = APP_URL;

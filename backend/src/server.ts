@@ -57,7 +57,9 @@ if (isProd) {
   const { createServer: createViteServer } = await import("vite");
   const vite = await createViteServer({
     root: frontendRoot,
-    server: { middlewareMode: true, hmr: { server } },
+    // 외부 공개(ngrok 터널)에서 접속하면 Vite dev 서버가 낯선 Host를 "Blocked request"(403)로 막는다.
+    // ngrok 도메인을 허용해 터널로도 프런트가 뜨게 한다. (localhost/LAN은 기본 허용)
+    server: { middlewareMode: true, hmr: { server }, allowedHosts: [".ngrok-free.dev", ".ngrok-free.app", ".ngrok.app"] },
     appType: "spa",
   });
   app.use(vite.middlewares);
