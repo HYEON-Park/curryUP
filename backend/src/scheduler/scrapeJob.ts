@@ -11,6 +11,7 @@ import { runScrapeAndMatch } from "../pipeline/runScrapeAndMatch.js";
 import { runMatchCheckIfNeeded } from "./matchCheckJob.js";
 import { runRatingCheckNow } from "./ratingCheckJob.js";
 import { runManualJob, runScheduledJob, type RunRecord } from "./runLog.js";
+import { withScheduledRetry } from "./scheduledRetry.js";
 
 const SCHEDULED_HOUR = 20;
 const SCHEDULED_MINUTE = 0;
@@ -46,7 +47,7 @@ export function startScrapeJob(): void {
       console.log("[scrapeJob] 배치 대상 유저 없음 — 스크래핑 스케줄 건너뜀");
       return;
     }
-    await runScheduledJob(userId, JOB_NAME, () => scrapeTask(userId));
+    await withScheduledRetry(JOB_NAME, () => runScheduledJob(userId, JOB_NAME, () => scrapeTask(userId)));
   });
 }
 

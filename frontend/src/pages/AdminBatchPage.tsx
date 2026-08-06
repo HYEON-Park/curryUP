@@ -521,13 +521,13 @@ function BatchMonitoringTab() {
       {totalPages > 1 && (
         <div className="pagination">
           <div className="pagination-nav">
-            <button class="topbar-logout" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+            <button className="topbar-logout" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
               이전
             </button>
             <span>
                {page} / {totalPages}
             </span>
-            <button class="topbar-logout" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+            <button className="topbar-logout" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
               다음
             </button>
           </div>

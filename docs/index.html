@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>curryUP — 채용공고 매칭 · 자기소개서 자동화</title>
+    <meta
+      name="description"
+      content="AI가 매일 채용공고를 수집·매칭하고 자기소개서 초안까지 준비하는 개인 채용 어시스턴트."
+    />
+    <style>
+      /* ============================================================
+         curryUP GitHub Pages 안내(랜딩) 페이지 — 자체 완결형(외부 로드 없음)
+         ▶ 앱 주소는 아래 <script>의 APP_URL 한 곳만 바꾸면 됩니다.
+         ============================================================ */
+      :root {
+        --bg: #fbf7f0;
+        --surface: #ffffff;
+        --text: #23201b;
+        --muted: #7a7266;
+        --border: #ece4d6;
+        --accent: #e6a12e;
+        --accent-ink: #3a2a06;
+        --shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 8px 24px rgba(0, 0, 0, 0.05);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1b1917;
+          --surface: #232019;
+          --text: #f0ece3;
+          --muted: #a89f8f;
+          --border: #35302733;
+          --accent: #eaa93f;
+          --accent-ink: #2a1e04;
+          --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        max-width: 100%;
+        overflow-x: hidden;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo",
+          "Malgun Gothic", "Noto Sans KR", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 0 20px;
+      }
+
+      /* ── 헤더 ── */
+      header {
+        padding: 20px 0;
+      }
+      .wordmark {
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: -0.4px;
+      }
+      .wordmark .up {
+        color: var(--accent);
+      }
+
+      /* ── 히어로 ── */
+      .hero {
+        padding: 48px 0 40px;
+        text-align: center;
+      }
+      .hero h1 {
+        font-size: clamp(28px, 6vw, 44px);
+        line-height: 1.2;
+        margin: 0 0 14px;
+        letter-spacing: -0.6px;
+      }
+      .hero p.lead {
+        font-size: clamp(15px, 3.4vw, 18px);
+        color: var(--muted);
+        margin: 0 auto 28px;
+        max-width: 34em;
+      }
+      .cta {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 16px;
+        font-weight: 800;
+        padding: 13px 28px;
+        border-radius: 12px;
+        border: none;
+        background: var(--accent);
+        color: var(--accent-ink);
+        text-decoration: none;
+        box-shadow: var(--shadow);
+        transition: transform 0.12s ease, filter 0.12s ease;
+      }
+      .cta:hover {
+        transform: translateY(-1px);
+        filter: brightness(1.04);
+      }
+      .cta:active {
+        transform: translateY(0);
+      }
+      .note {
+        margin-top: 16px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      /* ── 카드 섹션 ── */
+      section.block {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 26px 26px 10px;
+        margin: 18px 0;
+        box-shadow: var(--shadow);
+      }
+      section.block h2 {
+        font-size: 15px;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin: 0 0 14px;
+      }
+
+      /* 배치 스케줄 표 */
+      .sched {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 10px 18px;
+        margin-bottom: 18px;
+      }
+      .sched .time {
+        font-variant-numeric: tabular-nums;
+        font-weight: 800;
+        color: var(--accent);
+        white-space: nowrap;
+      }
+      .sched .desc {
+        color: var(--text);
+      }
+
+      /* 기능 리스트 */
+      ul.feat {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 16px;
+      }
+      ul.feat li {
+        padding: 9px 0 9px 26px;
+        position: relative;
+        border-bottom: 1px solid var(--border);
+      }
+      ul.feat li:last-child {
+        border-bottom: none;
+      }
+      ul.feat li::before {
+        content: "›";
+        position: absolute;
+        left: 6px;
+        color: var(--accent);
+        font-weight: 800;
+      }
+
+      footer {
+        text-align: center;
+        color: var(--muted);
+        font-size: 13px;
+        padding: 30px 0 44px;
+      }
+      footer a {
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <span class="wordmark">curry<span class="up">UP</span></span>
+      </header>
+
+      <main>
+        <div class="hero">
+          <h1>채용공고 매칭부터<br />자기소개서 초안까지, 자동으로.</h1>
+          <p class="lead">
+            AI가 매일 채용공고를 수집·매칭하고, 매칭률 평가와 자기소개서·경력기술서 초안까지
+            미리 준비해 두는 개인 채용 어시스턴트입니다.
+          </p>
+          <a id="open-app" class="cta" href="#" target="_blank" rel="noopener">앱 열기 →</a>
+          <p class="note">
+            ⚠️ 앱은 운영자 PC에서 구동됩니다. PC가 켜져 있을 때 접속할 수 있어요.
+          </p>
+        </div>
+
+        <section class="block">
+          <h2>이렇게 동작합니다 · 매일 자동 배치</h2>
+          <div class="sched">
+            <div class="time">20:00</div>
+            <div class="desc">공고 수집 → 기업 평점 → 매칭률 사전 평가</div>
+            <div class="time">21:00</div>
+            <div class="desc">고평점·즐겨찾기 공고 자기소개서·경력기술서 초안 작성</div>
+            <div class="time">19:00</div>
+            <div class="desc">마감(종료)된 공고 자동 정리</div>
+            <div class="time">09:00</div>
+            <div class="desc">프로필 최신화 알림</div>
+          </div>
+        </section>
+
+        <section class="block">
+          <h2>주요 기능</h2>
+          <ul class="feat">
+            <li>프로필(경력·기술·희망직무) 기반 공고 자동 매칭·필터링</li>
+            <li>공고별 종합 매칭률 링과 항목별 매칭표</li>
+            <li>자기소개서·소개·경력기술서 초안 자동 작성</li>
+            <li>즐겨찾기·숨김·마감 임박 정리로 대시보드 한눈에 관리</li>
+          </ul>
+        </section>
+      </main>
+
+      <footer>
+        <p>
+          made by hyeon ·
+          <a href="https://github.com/HYEON-Park/curryUP" target="_blank" rel="noopener"
+            >GitHub</a
+          >
+        </p>
+      </footer>
+    </div>
+
+    <script>
+      // ────────────────────────────────────────────────────────────
+      // 앱 주소: 터널(공개 URL)이 준비되면 이 한 줄만 바꾸세요.
+      //   예) const APP_URL = "https://curryup.example.com";
+      //   로컬에서만 테스트할 땐 "http://localhost:4000" 도 가능합니다.
+      // ────────────────────────────────────────────────────────────
+      const APP_URL = "http://localhost:4000";
+
+      const btn = document.getElementById("open-app");
+      btn.href = APP_URL;
+      // 아직 주소가 자리표시자면 안내만 한다.
+      if (APP_URL.includes("localhost")) {
+        btn.addEventListener("click", function () {
+          // 로컬 주소는 외부 기기에서 열리지 않음을 살짝 안내(운영자 본인 PC에서만 동작).
+          // 필요 없으면 이 블록을 지워도 됩니다.
+        });
+      }
+    </script>
+  </body>
+</html>

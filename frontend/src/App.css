@@ -604,6 +604,12 @@ button[type="submit"] {
   color: var(--muted);
 }
 
+/* 공고 상세 제목의 평점은 카드보다 살짝 크고 굵게(대시보드 카드용 .job-rating은 그대로 유지). */
+.job-detail h2 .job-rating {
+  font-size: 15px;
+  font-weight: 700;
+}
+
 .job-card-loc {
   font-size: 11px;
   color: var(--muted);

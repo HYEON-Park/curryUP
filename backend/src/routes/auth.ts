@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import bcrypt from "bcryptjs";
-import { Router } from "express";
+import { Router, type Request } from "express";
 import { authMiddleware, signToken } from "../auth/jwt.js";
 import { isMailConfigured, sendVerificationEmail } from "../auth/mailer.js";
 import {
@@ -28,6 +28,26 @@ function makeVerification(): { token: string; expires: string } {
 
 function verifyLink(token: string): string {
   return `${getBaseUrl(PORT)}/api/auth/verify?token=${token}`;
+}
+
+// 이 로그인 요청이 로컬(localhost/LAN)에서 왔는지 판별한다.
+// 자동 배치는 로컬 로그인 유저만 대상으로 삼으므로(공개 URL/터널 접속은 배치 제외), 이 값을 저장한다.
+// - 터널·프록시는 X-Forwarded-* 헤더를 붙이므로 그런 요청은 공개로 간주한다.
+// - 그 외에는 Host가 localhost/사설 LAN 대역일 때만 로컬로 본다.
+function isLocalRequest(req: Request): boolean {
+  if (req.headers["x-forwarded-for"] || req.headers["x-forwarded-host"]) return false;
+  const hostname = String(req.headers.host ?? "")
+    .toLowerCase()
+    .split(":")[0]
+    .replace(/^\[|\]$/g, "");
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "::1" ||
+    /^192\.168\./.test(hostname) ||
+    /^10\./.test(hostname) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(hostname)
+  );
 }
 
 // 회원가입: 이메일 중복 검사 → bcrypt 해싱 → users.json 추가 → 인증 메일 발송.
@@ -86,7 +106,7 @@ authRouter.post("/login", async (req, res) => {
     return;
   }
 
-  await setLastLogin(user.userId);
+  await setLastLogin(user.userId, isLocalRequest(req));
   const token = signToken({ userId: user.userId, email: user.email });
   const hasProfile = isProfileConfigured(await getProfile(user.userId));
   res.json({ token, userId: user.userId, email: user.email, hasProfile });

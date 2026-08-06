@@ -116,7 +116,7 @@ export function JobDetailPage() {
         </button>
       </div>
       <h2>
-        {job.company} — {job.title}
+        {job.company} — {job.title} <span className="job-rating">({job.rating ?? "—"})</span>
       </h2>
       <div className="job-detail-meta">
         <p>{job.location}</p>

@@ -2,6 +2,7 @@ import cron from "node-cron";
 import { getBatchUserId, getJobPostings, saveJobPostings } from "../data/store.js";
 import { findScraperFor } from "../scrapers/index.js";
 import { attachClosedJobs, runManualJob, runScheduledJob, type RunRecord } from "./runLog.js";
+import { withScheduledRetry } from "./scheduledRetry.js";
 
 export const CLOSED_CHECK_JOB_NAME = "종료공고";
 const SCHEDULED_HOUR = 19;
@@ -55,16 +56,24 @@ async function closedCheckTask(
 }
 
 async function runClosedCheck(userId: string, trigger: "scheduled" | "manual"): Promise<RunRecord> {
-  let closedList: { company: string; title: string }[] = [];
-  const runner = trigger === "manual" ? runManualJob : runScheduledJob;
-  const record = await runner(userId, CLOSED_CHECK_JOB_NAME, () =>
-    closedCheckTask(userId, (list) => {
-      closedList = list;
-    })
-  );
-  // 실행 레코드가 완료된 뒤 종료 목록을 붙인다(recordRun의 완료 덮어쓰기 이후여야 유실되지 않음).
-  await attachClosedJobs(userId, record.id, closedList);
-  return record;
+  // 한 번의 실행: 배치를 돌리고, 완료 레코드에 종료 목록을 붙인다.
+  // (attachClosedJobs는 recordRun의 완료 덮어쓰기 이후여야 유실되지 않는다.)
+  const runOnce = async (runner: typeof runManualJob): Promise<RunRecord> => {
+    let closedList: { company: string; title: string }[] = [];
+    const record = await runner(userId, CLOSED_CHECK_JOB_NAME, () =>
+      closedCheckTask(userId, (list) => {
+        closedList = list;
+      })
+    );
+    await attachClosedJobs(userId, record.id, closedList);
+    return record;
+  };
+
+  if (trigger === "manual") return runOnce(runManualJob);
+
+  // 스케줄 실행: 실패 시 5분 뒤 1회 재시도(재시도도 자기 종료 목록을 attach) + 더블 실패 OS 알림.
+  const record = await withScheduledRetry(CLOSED_CHECK_JOB_NAME, () => runOnce(runScheduledJob));
+  return record!; // 스케줄 실행은 항상 레코드를 반환한다(null은 스킵 전용 — 여기선 발생하지 않음).
 }
 
 // 관리자 페이지 "지금 종료 점검" 버튼용.

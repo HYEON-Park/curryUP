@@ -58,6 +58,9 @@ export interface User {
   password: string; // bcrypt hash
   createdAt: string;
   lastLoginAt: string | null;
+  // 마지막 로그인이 로컬(localhost/LAN)에서 왔는지. 공개 URL(터널)로 로그인하면 false.
+  // 자동 배치는 로컬 로그인 유저만 대상으로 삼는다(getBatchUserId). 기존 유저는 이 필드가 없을 수 있다.
+  lastLoginLocal?: boolean;
   emailVerified: boolean;
   verifyToken: string | null;
   verifyExpires: string | null; // ISO
@@ -87,8 +90,8 @@ export async function saveUser(user: User): Promise<void> {
 }
 
 // 로그인 시각 기록 — 배치 대상(가장 최근 로그인 유저) 선택에 쓰인다.
-export async function setLastLogin(userId: string): Promise<void> {
-  await updateUser(userId, { lastLoginAt: new Date().toISOString() });
+export async function setLastLogin(userId: string, local: boolean): Promise<void> {
+  await updateUser(userId, { lastLoginAt: new Date().toISOString(), lastLoginLocal: local });
 }
 
 // 유저 레코드 부분 갱신(이메일 인증 상태·토큰·로그인 시각 등).
@@ -113,6 +116,9 @@ export async function getBatchUserId(): Promise<string | null> {
   let picked: User | null = null;
   for (const user of users) {
     if (!user.lastLoginAt) continue;
+    // 공개 URL(터널)로 로그인한 유저는 자동 배치에서 제외한다 — 로컬/LAN 로그인만 배치를 돌린다.
+    // 기존 유저는 lastLoginLocal이 없을 수 있으므로, 명시적으로 false인 경우만 제외한다.
+    if (user.lastLoginLocal === false) continue;
     if (!isProfileConfigured(await getProfile(user.userId))) continue;
     if (!picked || user.lastLoginAt > picked.lastLoginAt!) picked = user;
   }

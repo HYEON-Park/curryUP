@@ -2,6 +2,7 @@ import cron from "node-cron";
 import { getBatchUserId, getProfile } from "../data/store.js";
 import { notifyWithLink } from "../notify/osNotifier.js";
 import { catchUpIfMissed, runManualJob, runScheduledJob, type RunRecord } from "./runLog.js";
+import { withScheduledRetry } from "./scheduledRetry.js";
 
 const SCHEDULED_HOUR = 9;
 const SCHEDULED_MINUTE = 0;
@@ -32,7 +33,7 @@ export function startNotifyJob(): void {
   cron.schedule(`${SCHEDULED_MINUTE} ${SCHEDULED_HOUR} * * *`, async () => {
     const userId = await getBatchUserId();
     if (!userId) return;
-    await runScheduledJob(userId, JOB_NAME, () => notifyTask(userId));
+    await withScheduledRetry(JOB_NAME, () => runScheduledJob(userId, JOB_NAME, () => notifyTask(userId)));
   });
 }
 

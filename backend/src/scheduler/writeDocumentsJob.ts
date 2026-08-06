@@ -5,6 +5,7 @@ import cron from "node-cron";
 import { getBatchUserId, getJobPostings, hasProfile } from "../data/store.js";
 import { isCollectedToday, todayLocalKey } from "../utils/date.js";
 import { runManualJob, type RunRecord } from "./runLog.js";
+import { withScheduledRetry } from "./scheduledRetry.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "../../..");
@@ -111,6 +112,7 @@ export function startWriteDocumentsJob(): void {
       console.log("[writeDocumentsJob] 배치 대상 유저 없음 — 문서 작성 스케줄 건너뜀");
       return;
     }
-    await runWriteDocumentsIfNeeded(userId);
+    // 실패 시 5분 뒤 1회 재시도 + 더블 실패 OS 알림. 대상 없음(null)은 스킵이라 재시도하지 않는다.
+    await withScheduledRetry(WRITE_DOCS_JOB_NAME, () => runWriteDocumentsIfNeeded(userId));
   });
 }
