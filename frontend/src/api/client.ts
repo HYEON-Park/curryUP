@@ -137,6 +137,26 @@ export async function fetchJobDetail(id: string): Promise<JobPosting> {
   return res.json();
 }
 
+// 공고 상세 페이지: 해당 탭 문서를 사용자가 직접 즉시 생성 요청한다(202로 시작만 알림).
+// 진행 중이면 409(BUSY), 프로필 미작성이면 400(NO_PROFILE).
+export async function generateJobDocument(id: string, docType: string): Promise<void> {
+  const res = await authFetch(`/jobs/${id}/documents/${docType}/generate`, { method: "POST" });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 409) throw new Error("BUSY");
+    throw new Error(data.error ?? "문서 생성 요청에 실패했습니다.");
+  }
+}
+
+// 생성 상태 폴링. running=false + hasContent면 완료, running=false + !hasContent면 실패.
+export async function fetchJobDocStatus(
+  id: string,
+  docType: string
+): Promise<{ running: boolean; hasContent: boolean }> {
+  const res = await authFetch(`/jobs/${id}/documents/${docType}/status`);
+  return res.json();
+}
+
 // 추천 공고 팝업용: 오늘 수집분 중 매칭률 70% 이상 공고와, 업데이트 세션 식별자.
 export async function fetchRecommendations(): Promise<{ sessionId: string | null; items: JobPosting[] }> {
   const res = await authFetch(`/jobs/recommendations`);

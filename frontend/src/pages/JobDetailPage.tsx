@@ -1,8 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { deleteJob, fetchJobDetail, toggleFavorite } from "../api/client";
+import {
+  deleteJob,
+  fetchJobDetail,
+  fetchJobDocStatus,
+  generateJobDocument,
+  toggleFavorite,
+} from "../api/client";
 import { MatchReport } from "../components/MatchReport";
 import type { JobPosting } from "../types";
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const DOC_TABS = ["matchReport", "coverLetter", "intro", "workExperience"] as const;
 type DocTab = (typeof DOC_TABS)[number];
@@ -17,13 +25,13 @@ const TAB_LABELS: Record<Tab, string> = {
   posting: "공고",
 };
 
-// 진입 시 열 탭 + 탭 버튼 순서. 문서 탭 우선(매칭표가 먼저), 공고는 맨 뒤.
-function getAvailableTabs(job: JobPosting): Tab[] {
-  // 내용이 있는 문서 탭만 노출한다. 매칭률 조회 배치가 매칭표만 채운 공고는 나머지 문서 필드가
-  // 빈 문자열이라 매칭표 탭만 뜬다.
-  const docTabs = DOC_TABS.filter((tab) => job.documents?.[tab]);
-  // 공고 탭은 항상 노출한다. 크롤링 원문(postingBody)이 없으면 수집된 공고 정보를 대신 렌더한다.
-  return [...docTabs, "posting"];
+// 탭 버튼 순서. 문서 탭 4개를 항상 노출하고(내용이 없어도 유지 — 사용자가 직접 생성할 수 있게),
+// 크롤링한 모집공고 원문을 보는 공고 탭을 맨 뒤에 둔다.
+const AVAILABLE_TABS: Tab[] = [...DOC_TABS, "posting"];
+
+// 진입 시 기본으로 열 탭: 내용이 있는 첫 문서 탭, 없으면 공고 탭(항상 볼 내용이 있음).
+function initialTab(job: JobPosting): Tab {
+  return DOC_TABS.find((tab) => job.documents?.[tab]) ?? "posting";
 }
 
 // postingBody 원문이 없을 때, 수집 시 확보한 실제 필드만으로 공고 정보를 구성한다(원문 창작 금지).
@@ -78,15 +86,80 @@ export function JobDetailPage() {
     else navigate(-1);
   }
   const [activeTab, setActiveTab] = useState<Tab | null>(null);
+  // 탭별 직접 생성 상태: 현재 생성 중인 탭(문서 종류)과 마지막 에러 문구.
+  const [generating, setGenerating] = useState<DocTab | null>(null);
+  const [genError, setGenError] = useState<string | null>(null);
+  // 언마운트·공고 전환 시 진행 중인 폴링을 무력화하기 위한 참조.
+  const mountedRef = useRef(true);
+  const idRef = useRef<string | undefined>(id);
 
   useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    idRef.current = id;
     if (!id) return;
+    // 공고가 바뀌면 이전 공고의 생성 상태·에러를 초기화한다(진행 중 폴링은 idRef 비교로 자동 중단).
+    setGenerating(null);
+    setGenError(null);
     fetchJobDetail(id).then((j) => {
       setJob(j);
-      // 내용이 있는 첫 번째 탭을 기본으로 연다. 문서 탭 우선이라 매칭표가 있으면 매칭표가 열린다.
-      setActiveTab(getAvailableTabs(j)[0] ?? null);
+      setActiveTab(initialTab(j));
     });
   }, [id]);
+
+  // 상태 폴링: 완료(hasContent)면 공고를 재조회해 렌더, 실패(running=false·내용 없음)면 에러 표시.
+  async function pollGeneration(jobId: string, docType: DocTab) {
+    const deadline = Date.now() + 10 * 60 * 1000;
+    while (Date.now() < deadline) {
+      await sleep(3000);
+      if (!mountedRef.current || idRef.current !== jobId) return;
+      let status: { running: boolean; hasContent: boolean };
+      try {
+        status = await fetchJobDocStatus(jobId, docType);
+      } catch {
+        continue; // 일시 오류는 다음 폴링에서 재시도
+      }
+      if (!mountedRef.current || idRef.current !== jobId) return;
+      if (status.hasContent) {
+        const fresh = await fetchJobDetail(jobId);
+        if (!mountedRef.current || idRef.current !== jobId) return;
+        setJob(fresh);
+        setActiveTab(docType);
+        setGenerating(null);
+        return;
+      }
+      if (!status.running) {
+        setGenerating(null);
+        setGenError("생성에 실패했습니다. 다시 시도해주세요.");
+        return;
+      }
+    }
+    setGenerating(null);
+    setGenError("생성 시간이 초과됐습니다. 다시 시도해주세요.");
+  }
+
+  // 중앙 '○○ 생성' 버튼 클릭: 생성 시작 요청 후 상태 폴링을 건다.
+  async function handleGenerate(docType: DocTab) {
+    if (!job) return;
+    setGenError(null);
+    try {
+      await generateJobDocument(job.id, docType);
+    } catch (error) {
+      setGenError(
+        error instanceof Error && error.message === "BUSY"
+          ? "다른 문서 생성이 진행 중입니다. 잠시 후 다시 시도해주세요."
+          : "문서 생성 요청에 실패했습니다."
+      );
+      return;
+    }
+    setGenerating(docType);
+    void pollGeneration(job.id, docType);
+  }
 
   // 즐겨찾기는 대시보드 카드와 같은 필드·같은 엔드포인트(toggleFavorite)를 그대로 재사용한다.
   // 저장 위치가 동일하므로 상세에서 토글해도 목록의 즐겨찾기와 통합 관리된다.
@@ -105,8 +178,6 @@ export function JobDetailPage() {
   }
 
   if (!job) return <p>불러오는 중...</p>;
-
-  const availableTabs = getAvailableTabs(job);
 
   return (
     <div className="job-detail">
@@ -138,26 +209,56 @@ export function JobDetailPage() {
       {activeTab ? (
         <>
           <div className="tabs">
-            {availableTabs.map((tab) => (
+            {AVAILABLE_TABS.map((tab) => (
               <button
                 key={tab}
                 className={tab === activeTab ? "active" : ""}
-                onClick={() => setActiveTab(tab)}
+                onClick={() => {
+                  setGenError(null);
+                  setActiveTab(tab);
+                }}
               >
                 {TAB_LABELS[tab]}
               </button>
             ))}
           </div>
-          {activeTab === "matchReport" ? (
-            <MatchReport text={job.documents?.matchReport ?? ""} />
-          ) : activeTab === "posting" ? (
+          {activeTab === "posting" ? (
             job.postingBody ? (
               <pre className="doc-content">{job.postingBody}</pre>
             ) : (
               <PostingSummary job={job} />
             )
+          ) : job.documents?.[activeTab] ? (
+            activeTab === "matchReport" ? (
+              <MatchReport text={job.documents?.matchReport ?? ""} />
+            ) : (
+              <pre className="doc-content">{job.documents?.[activeTab]}</pre>
+            )
           ) : (
-            <pre className="doc-content">{job.documents?.[activeTab]}</pre>
+            // 내용이 없는 문서 탭: 사용자가 직접 즉시 생성한다.
+            <div className="doc-generate">
+              {generating === activeTab ? (
+                <>
+                  <button className="doc-generate-btn" disabled>
+                    생성 중...
+                  </button>
+                  <p className="doc-generate-note">
+                    Claude가 {TAB_LABELS[activeTab]}을(를) 작성하고 있습니다. 잠시만 기다려주세요.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <button
+                    className="doc-generate-btn"
+                    disabled={generating !== null}
+                    onClick={() => handleGenerate(activeTab)}
+                  >
+                    {TAB_LABELS[activeTab]} 생성
+                  </button>
+                  {genError && <p className="doc-generate-error">{genError}</p>}
+                </>
+              )}
+            </div>
           )}
         </>
       ) : (

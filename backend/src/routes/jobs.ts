@@ -2,6 +2,11 @@ import { Router } from "express";
 import { authMiddleware } from "../auth/jwt.js";
 import { getJobPostings, hideJob, toggleFavorite } from "../data/store.js";
 import { getLatestRun } from "../scheduler/runLog.js";
+import {
+  getSingleDocState,
+  isDocType,
+  startSingleDocGeneration,
+} from "../scheduler/singleDocJob.js";
 import type { JobPosting } from "../types.js";
 import { localDateKey } from "../utils/date.js";
 import { daysUntilDeadline } from "../utils/deadline.js";
@@ -130,4 +135,44 @@ jobsRouter.delete("/:id", async (req, res) => {
     return;
   }
   res.json({ success: true });
+});
+
+// 공고 상세 페이지: 해당 탭 문서를 사용자가 직접 즉시 생성한다(Claude CLI headless).
+// 저장 위치는 기존 documents.{docType}를 그대로 재사용한다.
+jobsRouter.post("/:id/documents/:docType/generate", async (req, res) => {
+  const { id, docType } = req.params;
+  if (!isDocType(docType)) {
+    res.status(400).json({ error: "INVALID_DOC_TYPE" });
+    return;
+  }
+  const result = await startSingleDocGeneration(req.user!.userId, id, docType);
+  switch (result) {
+    case "no-profile":
+      res.status(400).json({ error: "NO_PROFILE" });
+      return;
+    case "not-found":
+      res.status(404).json({ error: "Job not found" });
+      return;
+    case "busy":
+      res.status(409).json({ error: "BUSY" });
+      return;
+    default:
+      res.status(202).json({ started: true });
+  }
+});
+
+// 생성 상태 폴링용. running=false + hasContent=true면 완료, running=false + hasContent=false면 실패.
+jobsRouter.get("/:id/documents/:docType/status", async (req, res) => {
+  const { id, docType } = req.params;
+  if (!isDocType(docType)) {
+    res.status(400).json({ error: "INVALID_DOC_TYPE" });
+    return;
+  }
+  const jobs = await getJobPostings(req.user!.userId);
+  const job = jobs.find((j) => j.id === id);
+  if (!job) {
+    res.status(404).json({ error: "Job not found" });
+    return;
+  }
+  res.json(getSingleDocState(req.user!.userId, id, docType, job.documents?.[docType]));
 });

@@ -884,6 +884,49 @@ button[type="submit"] {
   border-radius: 8px;
 }
 
+/* 내용이 없는 문서 탭 — 사용자가 직접 즉시 생성하는 중앙 버튼 영역 */
+.doc-generate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 220px;
+  background: var(--code-bg);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 24px;
+  text-align: center;
+}
+
+.doc-generate-btn {
+  font: inherit;
+  font-weight: 600;
+  padding: 12px 28px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  cursor: pointer;
+}
+
+.doc-generate-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.doc-generate-note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.doc-generate-error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--danger, #d33);
+}
+
 /* postingBody 원문이 없는 공고의 공고 탭 — 수집된 필드만 렌더 */
 .posting-summary {
   background: var(--code-bg);
@@ -1430,6 +1473,7 @@ button[type="submit"] {
 }
 
 .admin-status {
+
   margin-bottom: 16px;
   font-size: 14px;
   color: var(--text);

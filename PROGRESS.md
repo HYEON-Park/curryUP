@@ -1,6 +1,6 @@
 # PROGRESS
 
-> 마지막 갱신: 2026-08-06
+> 마지막 갱신: 2026-08-11
 
 현재 무엇을 하는 중이고 다음에 뭘 할지 추적하는 문서. 세션 시작 시 이 파일을 먼저 읽는다.
 (변경 이력 자체는 `CHANGELOG.md`, 구조 설명은 `README.md`가 담당한다.)
@@ -21,6 +21,22 @@
 - **[내일(2026-08-07) 체크] 배치 재실행(재배치) 기능 라이브 검증** — 오늘 밤 스케줄 배치(scrape 20:00 / write-documents 21:00, 그리고 09:00·19:00)가 모두 정상 실행됐는지 먼저 확인. 실패가 발생했다면 5분 뒤 자동 재실행 + 더블 실패 OS 알림이 실제로 동작했는지 관찰(5분 지연 특성상 라이브 실측 전). 전부 성공이면 재시도 경로는 트리거되지 않으므로 "성공만 확인"으로 종결.
 
 ## 최근 완료
+
+### 2026-08-11 — 공고 상세: 탭별 문서 직접 생성(온디맨드) + 관리자 배치 row 통합
+
+- **탭별 즉시 생성**: 상세 페이지에서 문서 탭 4개(매칭표·자기소개서·소개·경력사항)를 내용 없어도 항상 노출.
+  빈 탭 중앙 "○○ 생성" 버튼 → 클릭 시 해당 공고 1건·해당 필드 1개만 Claude CLI headless로 생성 →
+  "생성 중..."(버튼 disabled) → 완료 시 공고 재조회 후 렌더. 요청 탭만 단독 생성하되 그 탭의 하위 항목은 전부 작성.
+- 저장 위치는 기존 `documents.{docType}` 재사용(새 필드·새 저장소 없음). 동시 실행은 막고 안내(409 BUSY —
+  단일 생성 진행 중 또는 야간 문서/매칭 배치 running이면 차단). 상태 폴링으로 완료·실패 판정.
+- 신규: `backend/src/scheduler/singleDocJob.ts`, 라우트 `POST/GET /api/jobs/:id/documents/:docType/generate|status`
+  (`routes/jobs.ts`), api client `generateJobDocument`·`fetchJobDocStatus`, 프런트 `JobDetailPage.tsx`·`App.css`(.doc-generate).
+  runLog는 `문서생성:{라벨}` 이름으로 남김(runManualJob 재사용 → 실패 처리·이력 공유).
+- **관리자 배치 페이지**: "지금 종료 점검" 버튼을 "공고 수집 배치" row로 통합, 라벨 "공고 수집 / 종료 점검"(`AdminBatchPage.tsx`).
+- 부수: `scrapeJob.ts:14` import 뒤 stray 텍스트(`admin-status`) 제거 — 백엔드 컴파일 복구.
+- 백엔드·프런트 `tsc --noEmit` 통과. 프런트 빌드 + 백엔드 재시작 완료 — 신규 라우트/UI **라이브 반영**(4000).
+  - 서버는 dev 모드(`NODE_ENV!=production`)라 Vite 미들웨어로 `src`를 실시간 서빙한다(재시작 중 PID 회전·HMR 로그는 정상). kill 대상은 `node.exe`로 한정할 것(powershell 셸 자기kill 방지). → 메모리 [[project-dev-server-vite-middleware]]·[[feedback-server-restart]].
+  - **미실시**: 실제 생성 버튼 클릭 → Claude CLI 생성 완료까지의 end-to-end 라이브 검증(수 분 소요라 다음 기회에 관찰).
 
 ### 2026-08-06 — 배치 실패 시 자동 재실행(재배치) + 더블 실패 OS 알림
 
