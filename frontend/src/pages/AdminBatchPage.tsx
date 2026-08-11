@@ -9,7 +9,6 @@ import {
   restoreHiddenJob,
   runClosedCheckBatch,
   runMatchCheckBatch,
-  runNotifyBatch,
   runWriteDocsBatch,
   runScrapeBatch,
   toggleFavorite,
@@ -361,7 +360,7 @@ function BatchMonitoringTab() {
     <div>
       <div className="admin-controls">
         <div className="admin-control-row">
-          <span>{JOB_LABELS.scrape}</span>
+          <span>공고 수집 / 종료 점검</span>
           <div className="admin-control-actions">
             <button
               disabled={pending !== null}
@@ -372,6 +371,20 @@ function BatchMonitoringTab() {
               }
             >
               공고 수집 배치
+            </button>
+            <button
+              disabled={pending !== null}
+              onClick={() =>
+                handleAction(
+                  "closed-check",
+                  "종료 공고 점검",
+                  runClosedCheckBatch,
+                  "종료 점검 시작됨 (아래 표에서 진행 상황 확인)",
+                  false
+                )
+              }
+            >
+              지금 종료 점검
             </button>
            {/* <button
               disabled={pending !== null}
@@ -432,26 +445,6 @@ function BatchMonitoringTab() {
               }
             >
               문서 작성 배치
-            </button>
-          </div>
-        </div>
-
-        <div className="admin-control-row">
-          <span>{JOB_LABELS.종료공고}</span>
-          <div className="admin-control-actions">
-            <button
-              disabled={pending !== null}
-              onClick={() =>
-                handleAction(
-                  "closed-check",
-                  "종료 공고 점검",
-                  runClosedCheckBatch,
-                  "종료 점검 시작됨 (아래 표에서 진행 상황 확인)",
-                  false
-                )
-              }
-            >
-              지금 종료 점검
             </button>
           </div>
         </div>

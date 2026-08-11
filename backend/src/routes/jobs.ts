@@ -3,7 +3,7 @@ import { authMiddleware } from "../auth/jwt.js";
 import { getJobPostings, hideJob, toggleFavorite } from "../data/store.js";
 import { getLatestRun } from "../scheduler/runLog.js";
 import type { JobPosting } from "../types.js";
-import { isCollectedToday, todayLocalKey } from "../utils/date.js";
+import { localDateKey } from "../utils/date.js";
 import { daysUntilDeadline } from "../utils/deadline.js";
 
 export const jobsRouter = Router();
@@ -67,32 +67,39 @@ jobsRouter.get("/all", async (req, res) => {
   res.json({ items: sorted });
 });
 
-// 추천 공고 팝업(수동 업데이트 파이프라인 4단계)용. 오늘 수집된 공고 중 매칭률 종합 70% 이상만 반환한다.
-// sessionId: 이번 업데이트 세션 식별자(= 오늘 완료된 가장 최근 수동 collect 실행 id). 팝업 중복 노출
-// 방지를 위해 프런트가 이 값을 dismiss 플래그로 사용한다. 오늘 수동 수집이 없으면 null(팝업 미노출).
+// 추천 공고 팝업(수동 업데이트 파이프라인 4단계)용. 가장 최근 수집 세션이 모은 공고 중
+// 매칭률 종합 70% 이상만 반환한다.
+// sessionId: 이번 수집 세션 식별자(= 수집 파이프라인의 가장 최근 실행 id). 프런트가 이 값을
+// dismiss 플래그(localStorage)로 써서 "이미 본 세션"은 다시 띄우지 않는다. 수집 이력이 없으면 null.
 // 주의: 이 라우트는 "/:id"보다 먼저 등록해야 "recommendations"가 id로 매칭되지 않는다.
+//
+// 날짜 경계와 무관하게 "최신 세션" 기준으로 판정한다.
+// (예전엔 date===today로 제한해, 20시 스케줄 scrape로 수집하고 다음 날 아침 대시보드를 열면
+//  날짜가 넘어가 sessionId=null·items=0 → 팝업이 아예 안 떴다. 이제 그 세션을 한 번 볼 때까지 뜬다.)
 jobsRouter.get("/recommendations", async (req, res) => {
   const userId = req.user!.userId;
-  const jobs = await getJobPostings(userId);
-  const items = jobs
-    .filter((j) => isCollectedToday(j.collectedAt))
-    .filter((j) => !j.disabled) // 종료 공고는 추천에서 제외.
-    .filter((j) => {
-      const overall = matchOverall(j.documents?.matchReport);
-      return overall !== null && overall >= 70;
-    })
-    .sort(compareJobs);
 
-  // 세션 식별: 오늘 데이터를 만든 수집 파이프라인의 최신 실행.
-  // 수동 UPDATE(collect·manual)든 스케줄 배치(scrape·scheduled)든 같은 산출(매칭표)을 내므로 둘 다 인정한다.
-  // (예전엔 collect·manual만 인정해, 07시 스케줄 scrape만 돈 날엔 sessionId=null이라 팝업이 안 떴다.)
-  // runLog의 date도 같은 로컬 날짜 기준이라 그대로 비교한다.
-  const today = todayLocalKey();
-  const pipelineRuns = await Promise.all([getLatestRun(userId, "collect"), getLatestRun(userId, "scrape")]);
-  const sessionRun = pipelineRuns
-    .filter((r): r is NonNullable<typeof r> => r !== null && r.date === today)
-    .sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0];
+  // 세션 식별: 수집 파이프라인(수동 collect·스케줄 scrape)의 가장 최근 실행.
+  // 수동 UPDATE(collect)든 스케줄 배치(scrape)든 같은 산출(매칭표)을 내므로 둘 다 인정한다.
+  const pipelineRuns = (await Promise.all([getLatestRun(userId, "collect"), getLatestRun(userId, "scrape")])).filter(
+    (r): r is NonNullable<typeof r> => r !== null,
+  );
+  const sessionRun = pipelineRuns.sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0] ?? null;
   const sessionId = sessionRun ? sessionRun.id : null;
+
+  // 추천 항목: 그 세션이 수집한 날짜의 공고 중 미종료·종합 매칭률 70% 이상.
+  // runLog의 date도 같은 로컬 날짜 기준이라 collectedAt의 로컬 날짜키와 그대로 비교한다.
+  const jobs = await getJobPostings(userId);
+  const items = sessionRun
+    ? jobs
+        .filter((j) => localDateKey(j.collectedAt) === sessionRun.date)
+        .filter((j) => !j.disabled) // 종료 공고는 추천에서 제외.
+        .filter((j) => {
+          const overall = matchOverall(j.documents?.matchReport);
+          return overall !== null && overall >= 70;
+        })
+        .sort(compareJobs)
+    : [];
 
   res.json({ sessionId, items });
 });

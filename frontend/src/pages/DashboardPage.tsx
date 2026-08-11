@@ -66,7 +66,7 @@ export function DashboardPage() {
     setAllJobs(data.items);
   }
 
-  // 추천 공고 팝업 트리거: 오늘 수집분 중 매칭률 70%+가 있고, 이번 업데이트 세션을 아직 닫지 않았으면 노출.
+  // 추천 공고 팝업 트리거: 최신 수집 세션의 매칭률 70%+가 있고, 그 세션을 아직 닫지 않았으면 노출.
   async function maybeShowRecommendations() {
     try {
       const { sessionId, items } = await fetchRecommendations();

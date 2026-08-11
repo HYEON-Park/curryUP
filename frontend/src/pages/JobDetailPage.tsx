@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { deleteJob, fetchJobDetail, toggleFavorite } from "../api/client";
 import { MatchReport } from "../components/MatchReport";
 import type { JobPosting } from "../types";
@@ -66,7 +66,17 @@ function PostingSummary({ job }: { job: JobPosting }) {
 export function JobDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [job, setJob] = useState<JobPosting | null>(null);
+
+  // 목록으로 복귀한다. 대시보드 카드(Link)에서 같은 탭으로 들어오면 앱 내 히스토리가 있어
+  // navigate(-1)로 카드가 있던 목록(필터·페이지 상태 유지)으로 되돌아간다. 추천 팝업은 상세를
+  // 새 탭(target=_blank)으로 여는데, 새 탭은 앱 내 히스토리가 없어(location.key === "default")
+  // navigate(-1)이 무동작이므로 대시보드로 직접 이동한다.
+  function goToList() {
+    if (location.key === "default") navigate("/");
+    else navigate(-1);
+  }
   const [activeTab, setActiveTab] = useState<Tab | null>(null);
 
   useEffect(() => {
@@ -91,7 +101,7 @@ export function JobDetailPage() {
   async function handleDelete() {
     if (!job) return;
     await deleteJob(job.id);
-    navigate(-1);
+    goToList();
   }
 
   if (!job) return <p>불러오는 중...</p>;
@@ -111,7 +121,7 @@ export function JobDetailPage() {
         >
           {job.isFavorite ? "★" : "☆"}
         </button>
-        <button className="back-to-list" onClick={() => navigate(-1)}>
+        <button className="back-to-list" onClick={goToList}>
           목록으로
         </button>
       </div>

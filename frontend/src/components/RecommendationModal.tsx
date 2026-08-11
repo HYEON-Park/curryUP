@@ -34,7 +34,7 @@ export function RecommendationModal({ items, onClose }: Props) {
           ×
         </button>
         <h2 className="rec-title">추천 공고</h2>
-        <p className="rec-subtitle">오늘 수집된 공고 중 매칭률 70% 이상인 맞춤형 공고입니다.</p>
+        <p className="rec-subtitle">최근 수집된 공고 중 매칭률 70% 이상인 맞춤형 공고입니다.</p>
         <div className="rec-list">
           {items.map((job) => {
             const pct = parseMatchOverall(job.documents?.matchReport);
