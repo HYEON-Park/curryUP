@@ -7,6 +7,14 @@ import { TagInput } from "../components/TagInput";
 import { AutoResizeTextarea } from "../components/AutoResizeTextarea";
 import { LocationPicker } from "../components/LocationPicker";
 import { JobCategoryPicker } from "../components/JobCategoryPicker";
+import { CareerForm } from "../components/CareerForm";
+import { EducationForm } from "../components/EducationForm";
+import {
+  careerInfoToText,
+  deriveYearsOfExperience,
+  educationInfoToText,
+  isValidYM,
+} from "../utils/profileDerive";
 
 const EMPTY_PROFILE: UserProfile = {
   yearsOfExperience: null,
@@ -41,9 +49,10 @@ export function ProfileEditPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [initialSnapshot, setInitialSnapshot] = useState<string | null>(null);
-  // 필수값 validation 실패 시 해당 필드로 포커스를 옮기기 위한 참조.
-  const yearsRef = useRef<HTMLInputElement>(null);
+  // 필수값 validation 실패 시 해당 필드로 스크롤·포커스를 옮기기 위한 참조.
   const categoryRef = useRef<HTMLFieldSetElement>(null);
+  const careerRef = useRef<HTMLFieldSetElement>(null);
+  const educationRef = useRef<HTMLFieldSetElement>(null);
   const isDirtyRef = useRef(false);
   const dirty = initialSnapshot !== null && initialSnapshot !== snapshotOf(profile);
 
@@ -84,24 +93,54 @@ export function ProfileEditPage() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, []);
 
-  // 카테고리 fieldset으로 스크롤 후 내부 첫 조작 요소(탭 버튼/체크박스)에 포커스한다.
-  function focusCategory() {
-    categoryRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-    categoryRef.current?.querySelector<HTMLElement>("button, input")?.focus();
+  // fieldset으로 스크롤 후 내부 첫 조작 요소에 포커스한다.
+  function focusFieldset(ref: React.RefObject<HTMLFieldSetElement>) {
+    return () => {
+      ref.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      ref.current?.querySelector<HTMLElement>("button, input, select, textarea")?.focus();
+    };
   }
 
-  // 필수값: 배치 매칭 기준이 되는 희망 직무 카테고리·경력 년차. (백엔드 PUT·배치 가드와 동일 기준)
-  // 실패 시 안내 문구(message)와 해당 필드로 포커스를 옮기는 focus를 함께 돌려준다.
+  // 필수값 검증. 배치 매칭 기준(희망 직무 카테고리·경력 년차)과 경력/학력 폼 필수 항목·년월 포맷을 본다.
   function validate(): { message: string; focus: () => void } | null {
-    if (profile.yearsOfExperience === null) {
-      return { message: "경력 (년차)는 필수 입력 항목입니다.", focus: () => yearsRef.current?.focus() };
-    }
-    if (profile.yearsOfExperience < 0) {
-      return { message: "경력 연차는 0 이상이어야 합니다.", focus: () => yearsRef.current?.focus() };
-    }
     if (profile.desiredRoleCategories.length === 0) {
-      return { message: "희망 직무 카테고리를 1개 이상 선택해주세요.", focus: focusCategory };
+      return { message: "희망 직무 카테고리를 1개 이상 선택해주세요.", focus: focusFieldset(categoryRef) };
     }
+
+    const careers = profile.careerInfo?.careers ?? [];
+    // 매칭 기준 연차는 경력 카드에서 파생한다. 카드가 없고 레거시 년차도 없으면 최소 1개 요구.
+    if (careers.length === 0 && profile.yearsOfExperience === null) {
+      return { message: "경력을 1개 이상 추가해주세요. (매칭 기준 연차 산정에 필요합니다)", focus: focusFieldset(careerRef) };
+    }
+    for (let i = 0; i < careers.length; i++) {
+      const c = careers[i];
+      const focus = focusFieldset(careerRef);
+      if (!c.companyName.trim()) return { message: `경력 ${i + 1}: 회사명을 입력해주세요.`, focus };
+      if (!c.jobTitle.trim()) return { message: `경력 ${i + 1}: 직무를 선택해주세요.`, focus };
+      if (!isValidYM(c.startYM)) return { message: `경력 ${i + 1}: 입사년월을 YYYYMM 6자리로 입력해주세요.`, focus };
+      if (!c.isWorking) {
+        if (!isValidYM(c.endYM)) return { message: `경력 ${i + 1}: 재직년월을 YYYYMM 6자리로 입력해주세요.`, focus };
+        if (c.endYM < c.startYM) return { message: `경력 ${i + 1}: 재직년월이 입사년월보다 빠릅니다.`, focus };
+      }
+    }
+
+    const educations = profile.educationInfo?.educations ?? [];
+    for (let i = 0; i < educations.length; i++) {
+      const ed = educations[i];
+      const focus = focusFieldset(educationRef);
+      if (!ed.schoolName.trim()) return { message: `학력 ${i + 1}: 학교명을 입력해주세요.`, focus };
+      if (ed.category === "UNIVERSITY") {
+        if (!ed.degreeType) return { message: `학력 ${i + 1}: 대학구분을 선택해주세요.`, focus };
+        if (!ed.major?.trim()) return { message: `학력 ${i + 1}: 전공을 입력해주세요.`, focus };
+      }
+      if (ed.category === "OTHER") {
+        if (!ed.recognizedLevel) return { message: `학력 ${i + 1}: 인정학력을 선택해주세요.`, focus };
+        if (!ed.field?.trim()) return { message: `학력 ${i + 1}: 전공분야를 입력해주세요.`, focus };
+      }
+      if (ed.startYM && !isValidYM(ed.startYM)) return { message: `학력 ${i + 1}: 입학년월을 YYYYMM 6자리로 입력해주세요.`, focus };
+      if (ed.endYM && !isValidYM(ed.endYM)) return { message: `학력 ${i + 1}: 졸업년월을 YYYYMM 6자리로 입력해주세요.`, focus };
+    }
+
     return null;
   }
 
@@ -114,7 +153,15 @@ export function ProfileEditPage() {
       return;
     }
     setError(null);
-    await saveProfile(profile);
+    // 구조화 경력/학력 → 매칭 년차·문서 배치용 텍스트로 파생 저장(결정 B·C).
+    const careers = profile.careerInfo?.careers ?? [];
+    const toSave: UserProfile = {
+      ...profile,
+      yearsOfExperience: careers.length > 0 ? deriveYearsOfExperience(careers) : profile.yearsOfExperience,
+      careerHistory: careerInfoToText(profile.careerInfo) || profile.careerHistory,
+      education: educationInfoToText(profile.educationInfo) || profile.education,
+    };
+    await saveProfile(toSave);
     // 저장 후 인증 상태(hasProfile)를 갱신해야 온보딩(/profile/setup) 강제 이동이 풀린다.
     await refresh();
     navigate("/profile");
@@ -135,21 +182,49 @@ export function ProfileEditPage() {
     <form onSubmit={handleSubmit} className="profile-edit-form">
       <h2>프로필 수정</h2>
 
-      <label>
-        경력 (년차) <span className="required-mark">*</span>
-        <input
-          ref={yearsRef}
-          type="number"
-          min={0}
-          value={profile.yearsOfExperience ?? ""}
-          onChange={(e) =>
-            setProfile({
-              ...profile,
-              yearsOfExperience: e.target.value ? Math.max(0, Number(e.target.value)) : null,
-            })
-          }
+      <fieldset ref={categoryRef}>
+        <legend>희망 직무 카테고리 <span className="required-mark">*</span></legend>
+        <JobCategoryPicker
+          selected={profile.desiredRoleCategories}
+          onChange={(desiredRoleCategories) => setProfile({ ...profile, desiredRoleCategories })}
+          skills={profile.skills}
+          onSkillsChange={(skills) => setProfile({ ...profile, skills })}
         />
-      </label>
+      </fieldset>
+
+      {activeQuestions.length > 0 && (
+        <fieldset>
+          <legend>직무별 추가 질문</legend>
+          {activeQuestions.map((question) => (
+            <label key={question}>
+              {question}
+              <input
+                value={profile.roleAnswers[question] ?? ""}
+                onChange={(e) =>
+                  setProfile({
+                    ...profile,
+                    roleAnswers: { ...profile.roleAnswers, [question]: e.target.value },
+                  })
+                }
+              />
+            </label>
+          ))}
+        </fieldset>
+      )}
+
+      <fieldset ref={careerRef} aria-label="경력">
+        <CareerForm
+          value={profile.careerInfo}
+          onChange={(careerInfo) => setProfile({ ...profile, careerInfo })}
+        />
+      </fieldset>
+
+      <fieldset ref={educationRef} aria-label="학력">
+        <EducationForm
+          value={profile.educationInfo}
+          onChange={(educationInfo) => setProfile({ ...profile, educationInfo })}
+        />
+      </fieldset>
 
       <label>
         기술 스택
@@ -157,14 +232,6 @@ export function ProfileEditPage() {
           value={profile.skills}
           onChange={(skills) => setProfile({ ...profile, skills })}
           placeholder="입력 후 Enter 또는 쉼표"
-        />
-      </label>
-
-      <label>
-        경력 사항
-        <AutoResizeTextarea
-          value={profile.careerHistory}
-          onChange={(careerHistory) => setProfile({ ...profile, careerHistory })}
         />
       </label>
 
@@ -235,14 +302,6 @@ export function ProfileEditPage() {
           />
         </label>
         <label>
-          학력
-          <input
-            value={profile.education ?? ""}
-            onChange={(e) => setProfile({ ...profile, education: e.target.value })}
-            placeholder="예: 컴퓨터과학과 학사 (2024.08 졸업)"
-          />
-        </label>
-        <label>
           커리어 방향성
           <input
             value={profile.careerDirection ?? ""}
@@ -267,36 +326,6 @@ export function ProfileEditPage() {
           />
         </label>
       </fieldset>
-
-      <fieldset ref={categoryRef}>
-        <legend>희망 직무 카테고리 <span className="required-mark">*</span></legend>
-        <JobCategoryPicker
-          selected={profile.desiredRoleCategories}
-          onChange={(desiredRoleCategories) => setProfile({ ...profile, desiredRoleCategories })}
-          skills={profile.skills}
-          onSkillsChange={(skills) => setProfile({ ...profile, skills })}
-        />
-      </fieldset>
-
-      {activeQuestions.length > 0 && (
-        <fieldset>
-          <legend>직무별 추가 질문</legend>
-          {activeQuestions.map((question) => (
-            <label key={question}>
-              {question}
-              <input
-                value={profile.roleAnswers[question] ?? ""}
-                onChange={(e) =>
-                  setProfile({
-                    ...profile,
-                    roleAnswers: { ...profile.roleAnswers, [question]: e.target.value },
-                  })
-                }
-              />
-            </label>
-          ))}
-        </fieldset>
-      )}
 
       {error && <p className="profile-error">{error}</p>}
 

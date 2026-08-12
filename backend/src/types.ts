@@ -13,10 +13,55 @@ export interface UserProfile {
   // 자소서 개인 자산(코드는 읽지 않고 문서 작성 배치만 참조). 프로필 페이지에서 입력한다.
   slogan?: string;                   // 대표 슬로건 (문서마다 1회 이상 등장)
   careerNarrative?: string;          // 커리어 서사 (예: SI→자체 솔루션)
-  education?: string;                // 학력
+  education?: string;                // 학력 (educationInfo에서 파생, 문서 배치 호환용)
   careerDirection?: string;          // 커리어 방향성
   interestDomains?: string;          // 관심 도메인
   representativeMetrics?: string;    // 대표 수치 세트 (자소서 수치화용)
+  // 구조화 경력/학력. careerHistory·education 텍스트는 문서 배치 호환용으로 파생 저장한다.
+  careerInfo?: CareerInfo;
+  educationInfo?: EducationInfo;
+}
+
+export interface CareerEntry {
+  companyName: string;
+  startYM: string;                   // YYYYMM
+  endYM: string;                     // YYYYMM (재직중이면 빈 값)
+  isWorking: boolean;
+  jobTitle: string;
+  department: string;
+  position: string;
+  description: string;
+}
+
+export interface CareerInfo {
+  totalExperience: string;           // "4년 11개월" — careers에서 파생
+  careers: CareerEntry[];
+}
+
+export type EducationCategory = "ELEMENTARY" | "MIDDLE" | "HIGH_SCHOOL" | "UNIVERSITY" | "OTHER";
+
+export interface EducationEntry {
+  category: EducationCategory;
+  schoolName: string;
+  status: string;                    // 졸업/재학/중퇴 등
+  startYM: string;
+  endYM: string;
+  isGED?: boolean;                   // 대입 검정고시
+  isTransfer?: boolean;              // 편입
+  track?: string;                    // 전공계열
+  degreeType?: string;               // 대학(2,3년)/대학교(4년)/대학원(석사)/대학원(박사)
+  major?: string;
+  gpa?: string;
+  subMajor?: string;                 // 추가전공
+  dayNight?: string;                 // 주/야간
+  recognizedLevel?: string;          // 인정학력
+  field?: string;                    // 전공분야
+  region?: string;
+}
+
+export interface EducationInfo {
+  highestLevel: string;              // educations에서 파생
+  educations: EducationEntry[];
 }
 
 export interface JobPosting {

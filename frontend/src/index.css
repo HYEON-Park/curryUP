@@ -44,6 +44,8 @@
   --social-bg: var(--surface-2);
   --accent-bg: oklch(0.78 0.15 70 / 0.16);
   --accent-border: oklch(0.78 0.15 70 / 0.45);
+  --req: oklch(0.58 0.2 25);          /* 필수 표시(도트·뱃지) */
+  --field: oklch(0.995 0.002 85);     /* 입력 필드 배경(카드보다 밝게) */
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
@@ -84,6 +86,8 @@
 
   --accent-bg: oklch(0.78 0.15 70 / 0.16);
   --accent-border: oklch(0.78 0.15 70 / 0.45);
+  --req: oklch(0.72 0.19 25);         /* 다크: 필수 표시 대비 상향 */
+  --field: oklch(0.22 0.03 260);      /* 다크: 입력 필드는 카드보다 어둡게 */
   color-scheme: dark;
 }
 

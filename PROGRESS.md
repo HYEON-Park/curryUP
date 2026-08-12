@@ -1,6 +1,6 @@
 # PROGRESS
 
-> 마지막 갱신: 2026-08-11
+> 마지막 갱신: 2026-08-12
 
 현재 무엇을 하는 중이고 다음에 뭘 할지 추적하는 문서. 세션 시작 시 이 파일을 먼저 읽는다.
 (변경 이력 자체는 `CHANGELOG.md`, 구조 설명은 `README.md`가 담당한다.)
@@ -8,6 +8,43 @@
 ## 현재 작업 중
 
 - (없음)
+
+### 2026-08-12 — 프로필 경력·학력 상세 입력 폼 개편 (구조화 스키마)
+
+- 단순 텍스트(`careerHistory`·`education`)를 구조화 스키마로 개편. **텍스트 필드는 삭제하지 않고 파생 저장**(문서 배치 §8 호환, 결정 C).
+- 스키마: `UserProfile`에 `careerInfo{totalExperience, careers[]}`·`educationInfo{highestLevel, educations[]}` 추가(백·프론트 `types.ts`).
+- 신규 파일: `data/profileFormMeta.ts`(드롭다운 옵션), `utils/profileDerive.ts`(총경력 계산·YYYYMM 검증·byte 카운터·텍스트 직렬화),
+  `components/CareerForm.tsx`, `components/EducationForm.tsx`, `components/JobTitlePicker.tsx`(택소노미 재사용 직무 팝업, 결정 A).
+- 경력: 총경력 뱃지 자동계산 · 회사명(검색아이콘 UI만) · 입사/재직년월(YYYYMM) · 재직중 토글 · 직무 팝업 · 부서 · 직급 드롭다운 · 담당업무+byte 카운터. "+ 경력 추가". **인증경력 불러오기는 미구현(결정 A).**
+- 학력: 1단계 구분 드롭다운 → 구분별 동적 필드(초/중=최소, 고교=검정고시·편입·전공계열, 대학=구분/전공/학점·추가전공·주야간 동적추가, 기타=인정학력/전공분야/지역). 구분 변경 시 이전값 reset.
+- `yearsOfExperience`는 경력 카드에서 **파생**(반올림, 결정 B). 카드 0개면 레거시 년차 유지 → 기존 프로필 저장 안 막힘.
+- `ProfileEditPage` 유효성 검사(필수·YYYYMM 6자리·재직년월≥입사년월, 실패 시 해당 fieldset 포커스). `ProfileViewPage` 경력 요약=총경력.
+- 백·프론트 `tsc --noEmit` 통과. **미검증**: 4000 화면 실제 렌더·저장·재조회 라이브 확인.
+
+#### UI 개편 (2차, 같은 날) — PRD 반영
+- 공통 컴포넌트 신설: `CardHeader`(번호뱃지+요약+접기+삭제), `PeriodRange`(시작–종료+진행중+자동기간, 경력·학력 공용), `FieldLabel`(필수=도트 / 선택="(선택)").
+- 섹션 헤더: `*`→"필수" 텍스트 뱃지, 총경력 pill 축소("총 N개월"), "+ 추가" 버튼 우측 solid navy.
+- 카드: surface-2 배경 + surface 헤더(번호 22px·요약 노출·접기 ⌃)·본문 분리. 접기 상태(첫 항목 펼침/추가시 펼침).
+- 경력 본문 4행 재배치(회사명·직무 / 근무기간(PeriodRange) / 부서·직급 / 담당업무). 담당업무 카운터 "N/2,000자"(byte 제거·하드 상한 2,000), 헬퍼 문구.
+- 학력: 재학기간 PeriodRange 통일, 추가정보(학점·추가전공·주야간) solid 버튼+구분선 그룹화. **학력 구분은 드롭다운 현상 유지(Q1 (b))**.
+- 토큰: `--req`·`--field` 신규 추가(라이트/다크). **전역 토큰 불변(Q2 (a))** — 폼 스코프만.
+- 입력 높이 40px·본문 13px 통일. 프론트 `tsc --noEmit` 통과.
+
+### 2026-08-12 — 희망 직무 카테고리 전 업종 확장 (사람인 분류 기반) + 상세 펼치기
+
+- 사람인 `job-category` 페이지의 `job_category_section`(searchPanelArgs.options.job_category)을 긁어와
+  **공식 직무 대분류 21개 / 세부직무 667개** 확보(scratchpad `jc.json`).
+- `jobCategoryMeta.ts` 재구성: 그룹 21개, 각 그룹에 `categories`(대표 직무, 공고많은순 상위 8개·IT는 기존 12개 라벨 유지) +
+  `detail`(사람인 세부직무 전체) 2단 구조. `RoleCategoryGroup` 인터페이스 추가.
+- `JobCategoryPicker.tsx`: 그룹 탭 안에 **"+ 상세 직무 전체 보기" 토글** 추가 — 대표 직무는 기본 노출,
+  상세는 접힘/펼침. 접힌 상태에서 상세 선택 개수 배지 표시. 대표에 이미 있는 라벨은 상세에서 제외(중복 방지).
+- `ROLE_QUESTIONS`(frontend `types.ts`) 167개로 확장 — 대표 직무별 그룹 질문(IT는 기존 개별 질문 유지).
+  `CATEGORY_SKILL_HINTS`도 대표 직무에 그룹 힌트 부여.
+- 선택값은 대표·상세 모두 `desiredRoleCategories`에 라벨 그대로 저장 → 매칭(rootKeyword 첫 단어) 그대로 작동.
+- 프런트 `tsc --noEmit` 통과. **미검증**: 4000 화면에서 21개 탭·상세 펼치기 실제 렌더 라이브 확인.
+- 주의(미처리): 구 비IT 라벨(영업/세일즈·인사/HR·재무/회계·고객지원/CS·운영/오퍼레이션·기획/PM·UX/UI 디자인·
+  그래픽/브랜드 디자인)은 새 택소노미에서 빠짐 → 그 라벨을 이미 저장한 프로필은 매칭에서 붕뜰 수 있음.
+  IT 라벨은 보존. 비IT 공고 매칭은 스크래퍼가 해당 카테고리로 수집·분류해야 실효(별도 작업).
 
 ## 다음 할 일
 

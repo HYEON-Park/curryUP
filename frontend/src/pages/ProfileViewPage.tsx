@@ -42,7 +42,13 @@ export function ProfileViewPage() {
       <dl className="profile-fields">
         <div className="profile-field">
           <dt>경력</dt>
-          <dd>{profile.yearsOfExperience !== null ? `${profile.yearsOfExperience}년차` : "미입력"}</dd>
+          <dd>
+            {profile.careerInfo?.totalExperience
+              ? `총 경력 ${profile.careerInfo.totalExperience}`
+              : profile.yearsOfExperience !== null
+                ? `${profile.yearsOfExperience}년차`
+                : "미입력"}
+          </dd>
         </div>
 
         <div className="profile-field">
