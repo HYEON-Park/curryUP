@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchProfile, saveProfile } from "../api/client";
+import { fetchProfile, parseResumePdf, saveProfile } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { ROLE_QUESTIONS, type UserProfile } from "../types";
+import {
+  ROLE_QUESTIONS,
+  type EducationCategory,
+  type EducationEntry,
+  type UserProfile,
+} from "../types";
 import { TagInput } from "../components/TagInput";
 import { AutoResizeTextarea } from "../components/AutoResizeTextarea";
 import { LocationPicker } from "../components/LocationPicker";
@@ -38,8 +43,52 @@ const EMPTY_PROFILE: UserProfile = {
 
 const UNSAVED_CHANGES_MESSAGE = "변경 사항이 저장되지 않을 수 있습니다. 나가시겠습니까?";
 
+const EDUCATION_CATEGORIES: EducationCategory[] = [
+  "ELEMENTARY",
+  "MIDDLE",
+  "HIGH_SCHOOL",
+  "UNIVERSITY",
+  "OTHER",
+];
+
 function snapshotOf(profile: UserProfile) {
   return JSON.stringify({ ...profile, lastProfileUpdate: null });
+}
+
+// PDF 파싱 결과(부분 UserProfile)를 폼 상태로 정규화한다.
+// 데이터 갱신 정책: 기존 값을 모두 초기화(EMPTY_PROFILE)한 뒤 파싱값으로 덮어쓴다.
+function parsedToProfile(parsed: Partial<UserProfile>, lastProfileUpdate: string | null): UserProfile {
+  const careers = (parsed.careerInfo?.careers ?? []).map((c) => ({
+    companyName: c.companyName ?? "",
+    startYM: c.startYM ?? "",
+    endYM: c.endYM ?? "",
+    isWorking: c.isWorking ?? false,
+    jobTitle: c.jobTitle ?? "",
+    department: c.department ?? "",
+    position: c.position ?? "",
+    description: c.description ?? "",
+  }));
+  const educations: EducationEntry[] = (parsed.educationInfo?.educations ?? []).map((e) => ({
+    ...e,
+    category: EDUCATION_CATEGORIES.includes(e.category) ? e.category : "UNIVERSITY",
+    schoolName: e.schoolName ?? "",
+    status: e.status ?? "",
+    startYM: e.startYM ?? "",
+    endYM: e.endYM ?? "",
+  }));
+
+  return {
+    ...EMPTY_PROFILE,
+    ...parsed,
+    roleAnswers: {},
+    careerInfo: careers.length
+      ? { totalExperience: parsed.careerInfo?.totalExperience ?? "", careers }
+      : undefined,
+    educationInfo: educations.length
+      ? { highestLevel: parsed.educationInfo?.highestLevel ?? "", educations }
+      : undefined,
+    lastProfileUpdate,
+  };
 }
 
 export function ProfileEditPage() {
@@ -47,6 +96,12 @@ export function ProfileEditPage() {
   const { refresh } = useAuth();
   const [profile, setProfile] = useState<UserProfile>(EMPTY_PROFILE);
   const [error, setError] = useState<string | null>(null);
+
+  // PDF 이력서 읽기 모달 상태.
+  const [pdfModalOpen, setPdfModalOpen] = useState(false);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   const [initialSnapshot, setInitialSnapshot] = useState<string | null>(null);
   // 필수값 validation 실패 시 해당 필드로 스크롤·포커스를 옮기기 위한 참조.
@@ -174,13 +229,81 @@ export function ProfileEditPage() {
     navigate("/profile");
   }
 
+  function closePdfModal() {
+    if (pdfLoading) return;
+    setPdfModalOpen(false);
+    setPdfFile(null);
+    setPdfError(null);
+  }
+
+  // PDF 업로드 → 파싱 → 기존 폼 초기화 후 파싱값으로 덮어쓰기.
+  async function handlePdfUpload() {
+    if (!pdfFile || pdfLoading) return;
+    setPdfLoading(true);
+    setPdfError(null);
+    try {
+      const parsed = await parseResumePdf(pdfFile);
+      setProfile(parsedToProfile(parsed, profile.lastProfileUpdate));
+      setError(null);
+      setPdfModalOpen(false);
+      setPdfFile(null);
+    } catch (e) {
+      setPdfError(e instanceof Error ? e.message : "PDF 파싱에 실패했습니다.");
+    } finally {
+      setPdfLoading(false);
+    }
+  }
+
   const activeQuestions = profile.desiredRoleCategories.flatMap(
     (category) => ROLE_QUESTIONS[category] ?? []
   );
 
   return (
     <form onSubmit={handleSubmit} className="profile-edit-form">
-      <h2>프로필 수정</h2>
+      <div className="edit-page-head">
+        <h2>프로필 수정</h2>
+        <button
+          type="button"
+          className="section-add-btn"
+          onClick={() => {
+            setPdfError(null);
+            setPdfModalOpen(true);
+          }}
+        >
+          PDF로 프로필 읽기
+        </button>
+      </div>
+
+      {pdfModalOpen && (
+        <div className="pdf-modal-overlay" onClick={closePdfModal}>
+          <div className="pdf-modal-box" onClick={(e) => e.stopPropagation()}>
+            <h3>PDF 이력서로 프로필 읽기</h3>
+            <p className="pdf-modal-hint">
+              PDF 이력서를 업로드하면 경력·학력·스킬 등을 자동으로 읽어 폼에 채웁니다.
+              <br />
+              기존에 입력한 값은 모두 초기화되고 새 내용으로 덮어쓰입니다.
+            </p>
+            <input
+              type="file"
+              accept="application/pdf,.pdf"
+              disabled={pdfLoading}
+              onChange={(e) => {
+                setPdfFile(e.target.files?.[0] ?? null);
+                setPdfError(null);
+              }}
+            />
+            {pdfError && <p className="profile-error">{pdfError}</p>}
+            <div className="pdf-modal-actions">
+              <button type="button" className="secondary" onClick={closePdfModal} disabled={pdfLoading}>
+                취소
+              </button>
+              <button type="button" onClick={handlePdfUpload} disabled={!pdfFile || pdfLoading}>
+                {pdfLoading ? "읽는 중…" : "업로드"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <fieldset ref={categoryRef}>
         <legend>희망 직무 카테고리 <span className="required-mark">*</span></legend>

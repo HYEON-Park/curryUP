@@ -1,6 +1,6 @@
 # PROGRESS
 
-> 마지막 갱신: 2026-08-12
+> 마지막 갱신: 2026-08-13
 
 현재 무엇을 하는 중이고 다음에 뭘 할지 추적하는 문서. 세션 시작 시 이 파일을 먼저 읽는다.
 (변경 이력 자체는 `CHANGELOG.md`, 구조 설명은 `README.md`가 담당한다.)
@@ -58,6 +58,15 @@
 - **[내일(2026-08-07) 체크] 배치 재실행(재배치) 기능 라이브 검증** — 오늘 밤 스케줄 배치(scrape 20:00 / write-documents 21:00, 그리고 09:00·19:00)가 모두 정상 실행됐는지 먼저 확인. 실패가 발생했다면 5분 뒤 자동 재실행 + 더블 실패 OS 알림이 실제로 동작했는지 관찰(5분 지연 특성상 라이브 실측 전). 전부 성공이면 재시도 경로는 트리거되지 않으므로 "성공만 확인"으로 종결.
 
 ## 최근 완료
+
+### 2026-08-13 — 프로필 수정: PDF 이력서 자동 읽기 (CLI headless)
+
+- `/profile/edit`에 `[PDF로 프로필 읽기]` 버튼(모달) 추가. PDF 업로드 → 경력·학력·스킬·자격증·희망직무·소개글을 자동 추출해 폼에 주입(기존 값 초기화 후 덮어쓰기).
+- **AI 엔진 결정**: PRD의 Anthropic API(Haiku) 대신 **기존 `claude` CLI headless 재사용**(과금 0, `singleDocJob`과 동일 spawn 패턴). 정규식 선행/PDF 라이브러리/multer **미도입**(사용자 확정). CLI가 리포의 `types.ts`·`profileFormMeta.ts`·`jobCategoryMeta.ts`를 직접 읽어 유효 enum/라벨로 매핑 → 백엔드에 택소노미 중복 정의 없음.
+- **핵심 결정/함정**: 임시 PDF는 **반드시 리포(=CLI cwd) 내부**에 저장(`.resume-tmp-*`, .gitignore). headless `claude -p`는 프로젝트 밖 파일 Read에 권한 승인이 필요해 무인 모드에선 막혀 빈 출력이 난다(초기 실패 원인). 파싱 직후 임시파일 삭제(개인정보).
+- 전송은 `application/pdf` 원본 바이너리(전역 express.json 우회) → 라우트 `express.raw`. CLI는 stdout JSON만 반환(프로필 파일 미수정), 반환 날짜는 YYYYMM 6자리로 정규화·스키마 밖 필드는 무시.
+- 신규: `backend/src/services/resumeParser.ts`. 수정: `backend/src/routes/profile.ts`, `frontend/src/api/client.ts`, `frontend/src/pages/ProfileEditPage.tsx`, `frontend/src/App.css`, `.gitignore`.
+- 백·프론트 `tsc --noEmit` 통과. **실검증 완료**: 제공된 예시 PDF(3페이지)로 e2e 실행 → 53초, 경력 3건·학력·스킬·희망직무 전부 유효값으로 정확 매핑 확인. 4000 화면에서 버튼→업로드→폼주입 라이브 클릭 검증은 미실시.
 
 ### 2026-08-11 — 공고 상세: 탭별 문서 직접 생성(온디맨드) + 관리자 배치 row 통합
 

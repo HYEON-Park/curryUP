@@ -2387,3 +2387,56 @@ button[type="submit"] {
     width: 130px;
   }
 }
+
+/* 프로필 수정 헤더: 제목(좌) · "PDF로 프로필 읽기" 버튼(우) */
+.edit-page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.edit-page-head h2 {
+  margin: 0;
+}
+
+/* PDF 이력서 읽기 모달 */
+.pdf-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 20, 50, 0.45);
+}
+.pdf-modal-box {
+  width: min(440px, 100%);
+  padding: 22px 22px 20px;
+  background: var(--surface);
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0, 33, 81, 0.25);
+}
+[data-theme="dark"] .pdf-modal-box {
+  background: oklch(0.34 0.03 260);
+}
+.pdf-modal-box h3 {
+  margin: 0 0 10px;
+}
+.pdf-modal-hint {
+  margin: 0 0 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted, #6b7280);
+}
+.pdf-modal-box input[type="file"] {
+  width: 100%;
+  font-size: 13px;
+}
+.pdf-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}

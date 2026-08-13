@@ -119,6 +119,21 @@ export async function saveProfile(profile: UserProfile): Promise<UserProfile> {
   return res.json();
 }
 
+// PDF 이력서를 업로드해 폼 주입용 파싱 결과(부분 UserProfile)를 받는다.
+// 원본 PDF를 application/pdf 바이너리로 전송한다(base64 없이 File 그대로).
+export async function parseResumePdf(file: File): Promise<Partial<UserProfile>> {
+  const res = await authFetch(`/profile/parse-pdf`, {
+    method: "POST",
+    headers: { "Content-Type": "application/pdf" },
+    body: file,
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error ?? "PDF 파싱에 실패했습니다.");
+  }
+  return res.json();
+}
+
 // ==================== 공고 ====================
 
 export async function fetchJobs(page: number): Promise<JobsPage> {
