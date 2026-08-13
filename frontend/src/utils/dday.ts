@@ -1,3 +1,21 @@
+const WEEKDAYS_KR = ["일", "월", "화", "수", "목", "금", "토"];
+
+// 마감일 문자열을 YY.MM.DD(요일) 한국 표준 형식으로 변환한다(예: "2026/08/23" → "26.08.23(일)").
+// null이면 "상시채용", 날짜를 파싱하지 못하면 원본 문자열을 그대로 둔다(안전망).
+export function formatDeadlineKR(deadline: string | null): string {
+  if (!deadline) return "상시채용";
+  const m = deadline.match(/(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})/);
+  if (!m) return deadline;
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  const date = new Date(year, month - 1, day);
+  const yy = String(year % 100).padStart(2, "0");
+  const mm = String(month).padStart(2, "0");
+  const dd = String(day).padStart(2, "0");
+  return `${yy}.${mm}.${dd}(${WEEKDAYS_KR[date.getDay()]})`;
+}
+
 export function formatDday(deadline: string | null): string {
   if (!deadline) return "마감일 미정";
 

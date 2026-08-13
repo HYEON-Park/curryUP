@@ -2440,3 +2440,10 @@ button[type="submit"] {
   gap: 8px;
   margin-top: 18px;
 }
+
+/* 배치 모니터링 상태란: 실행 주체([자동]/[수동]) 구분 라벨 */
+.run-trigger {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted, #6b7280);
+}

@@ -15,6 +15,7 @@ import {
 } from "../api/client";
 import type { HiddenJobPosting, JobPosting, RunRecord } from "../types";
 import { ensureProfileOrRedirect } from "../utils/profileGuard";
+import { formatDeadlineKR } from "../utils/dday";
 
 const JOB_LABELS: Record<string, string> = {
   scrape: "오늘 공고 수집",
@@ -31,6 +32,12 @@ const STATUS_LABELS: Record<RunRecord["status"], string> = {
   success: "성공",
   failed: "실패",
   running: "진행중",
+};
+
+// 실행 주체: 시스템 자동(Cron) vs 관리자 수동 실행 구분. 상태란에 "[자동] 성공"처럼 함께 표기한다.
+const TRIGGER_LABELS: Record<RunRecord["trigger"], string> = {
+  scheduled: "자동",
+  manual: "수동",
 };
 
 function formatDate(iso: string): string {
@@ -265,7 +272,7 @@ function FavoritesTab() {
             <td>{job.company}</td>
             <td>{job.title}</td>
             <td>{job.location}</td>
-            <td>{job.deadline ?? "상시채용"}</td>
+            <td>{formatDeadlineKR(job.deadline)}</td>
             <td>
               <button
                 className="unfavorite-btn"
@@ -481,6 +488,7 @@ function BatchMonitoringTab() {
                 <td>{formatTime(run.startedAt)}</td>
                 <td>{formatTime(run.finishedAt)}</td>
                 <td>
+                  <span className="run-trigger">[{TRIGGER_LABELS[run.trigger]}]</span>{" "}
                   <span className={`status-badge ${run.status}`}>{STATUS_LABELS[run.status]}</span>
                 </td>
               </tr>
