@@ -1,8 +1,10 @@
 import cron from "node-cron";
+import { sendUpdateCompleteEmail } from "../auth/mailer.js";
 import {
   deleteExpiredJobPostings,
   deleteImminentJobPostings,
   deleteTodaysJobPostings,
+  findUserById,
   getBatchUserId,
   hasProfile,
   saveJobPostings,
@@ -30,10 +32,18 @@ async function scrapeTask(userId: string): Promise<void> {
   const matchResult = await runScrapeAndMatch(userId);
   console.log("[scrapeJob] scrape+match:", matchResult);
   // 대시보드 "공고 UPDATE" 버튼(collect 라우트)과 동일한 자동화 순서로 이어서 수행한다:
-  // 수집·매칭 → 평점 조회 → 매칭률 조회(Claude). 문서 작성 배치는 이 배치에서 실행하지 않는다.
-  await runRatingCheckNow(userId);
-  // 평점 조회가 끝난 뒤(평점을 참고해) 당일 수집분의 매칭률 평가표를 마지막 단계로 작성한다.
+  // 수집 → 매칭률 조회(Claude) → 평점 조회(매칭률 60% 이상 공고의 회사만). 문서 작성 배치는 이 배치에서 실행하지 않는다.
   await runMatchCheckIfNeeded(userId);
+  // 매칭률 산정 후, 오늘 수집분 중 매칭률 60% 이상 공고의 회사만 평점 조회한다.
+  await runRatingCheckNow(userId);
+  // UPDATE 완료 시 해당 사용자 이메일로 완료 알림 메일을 보낸다(발송 실패는 배치를 막지 않음).
+  const user = await findUserById(userId);
+  if (user?.email) {
+    await sendUpdateCompleteEmail(user.email, {
+      collected: matchResult.collected,
+      newlyMatched: matchResult.newlyMatched,
+    }).catch((error) => console.error("[scrapeJob] UPDATE 완료 메일 발송 실패:", error));
+  }
 }
 
 // 매일 07:00 한 번, D-day 지난 공고를 정리하고 새 공고를 수집+매칭한 뒤 평점 조회 → 매칭률 조회까지

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authMiddleware } from "../auth/jwt.js";
+import { sendUpdateCompleteEmail } from "../auth/mailer.js";
 import { hasProfile } from "../data/store.js";
 import { runScrapeAndMatch } from "../pipeline/runScrapeAndMatch.js";
 import { runMatchCheckIfNeeded } from "../scheduler/matchCheckJob.js";
@@ -29,16 +30,21 @@ collectRouter.post("/", async (req, res) => {
     return;
   }
 
-  // 수집이 끝나면 평점 조회 → 매칭률 조회를 백엔드에서 순서대로 이어서 실행한다.
-  // 이전에는 프런트(UPDATE 버튼)가 수집 완료 후 평점 조회를 호출했는데, 수집 도중 탭을
-  // 새로고침·이동·종료하면 그 후속 호출이 사라져 평점 조회가 누락됐다. 이제 수집 완료
-  // 시점에 서버가 직접 시작해 브라우저 상태와 무관하게 항상 실행되도록 보장한다.
-  // 평점 조회가 끝난 뒤(평점을 참고해) 당일 수집분의 매칭률 평가표를 마지막 단계로 작성한다.
+  // 수집이 끝나면 매칭률 조회 → 평점 조회를 백엔드에서 순서대로 이어서 실행한다.
+  // (배치 순서 변경: 매칭률을 먼저 산정하고, 매칭률 60% 이상 공고의 회사만 평점 조회한다.)
+  // 수집 완료 시점에 서버가 직접 시작해 브라우저 상태(탭 이동·종료)와 무관하게 항상 실행되도록 보장한다.
   // 두 배치 모두 수 분 걸릴 수 있어 응답은 기다리지 않고 시작만 시킨다
-  // (프런트는 rating-check/status → match-check/status 순으로 완료를 폴링한다).
-  runRatingCheckNow(userId)
-    .then(() => runMatchCheckIfNeeded(userId))
-    .catch((error) => console.error("[manual collect] rating/match check failed:", error));
+  // (프런트는 match-check/status → rating-check/status 순으로 완료를 폴링한다).
+  runMatchCheckIfNeeded(userId)
+    .then(() => runRatingCheckNow(userId))
+    // 매칭률·평점 조회까지 끝나면(=UPDATE 완료) 해당 사용자 이메일로 완료 알림 메일을 보낸다.
+    .then(() =>
+      sendUpdateCompleteEmail(req.user!.email, {
+        collected: result?.collected ?? 0,
+        newlyMatched: result?.newlyMatched ?? 0,
+      })
+    )
+    .catch((error) => console.error("[manual collect] match/rating/mail failed:", error));
 
   res.json(result);
 });

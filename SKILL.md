@@ -10,10 +10,14 @@
 # 마감 임박 공고 자동 삭제
 
 공고 수집 후 대시보드에서 아래 조건에 해당하는 공고를 삭제한다.
+(D-5까지 마감임박 공고는 수집 단계에서 모두 삭제한다.)
 
 - 당일 마감 (D-0)
 - D-1 (내일 마감)
 - D-2 (모레 마감)
+- D-3 (3일 뒤 마감)
+- D-4 (4일 뒤 마감)
+- D-5 (5일 뒤 마감)
 
 # SKILL.md 확인 루틴
 
@@ -24,7 +28,7 @@
 Claude Code는 아래 시점에 반드시 `C:\R\SKILL.md`를 읽어 최신 내용을 반영한다.
 
 1. **UPDATE 버튼 클릭 시**
-   - 위치: `dashboard-toolbar-top` 내 `<button>UPDATE</button>`
+   - 위치: `dashboard-toolbar-top` 내 `<button>UPD****ATE</button>`
    - 사용자가 클릭하면 즉시 `C:\R\SKILL.md`를 재적재한다.
 
 2. **서버 기동 시**
