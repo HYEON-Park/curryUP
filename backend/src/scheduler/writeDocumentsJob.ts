@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import cron from "node-cron";
-import { getBatchUserId, getJobPostings, hasProfile } from "../data/store.js";
+import { getBatchUserIds, getJobPostings, hasProfile } from "../data/store.js";
 import { isCollectedToday, todayLocalKey } from "../utils/date.js";
 import { runManualJob, type RunRecord } from "./runLog.js";
 import { withScheduledRetry } from "./scheduledRetry.js";
@@ -104,15 +104,17 @@ export async function runWriteDocumentsIfNeeded(userId: string): Promise<RunReco
 }
 
 // 매일 08:00, 스크래핑 배치(07:00)가 수집·평점·매칭률까지 마친 당일 공고에 대해 Claude 문서 작성
-// 배치를 실행한다. 대상 유저 1명(getBatchUserId). 대상이 없으면 건너뛴다.
+// 배치를 실행한다. 대상은 관리자가 등록한 유저 전부(getBatchUserIds). 사용자별 순차. 대상이 없으면 건너뛴다.
 export function startWriteDocumentsJob(): void {
   cron.schedule(`${SCHEDULED_MINUTE} ${SCHEDULED_HOUR} * * *`, async () => {
-    const userId = await getBatchUserId();
-    if (!userId) {
+    const userIds = await getBatchUserIds();
+    if (userIds.length === 0) {
       console.log("[writeDocumentsJob] 배치 대상 유저 없음 — 문서 작성 스케줄 건너뜀");
       return;
     }
-    // 실패 시 5분 뒤 1회 재시도 + 더블 실패 OS 알림. 대상 없음(null)은 스킵이라 재시도하지 않는다.
-    await withScheduledRetry(WRITE_DOCS_JOB_NAME, () => runWriteDocumentsIfNeeded(userId));
+    // 실패 시 5분 뒤 1회 재시도 + 더블 실패 OS 알림. 대상 없음(스킵)은 재시도하지 않는다.
+    for (const userId of userIds) {
+      await withScheduledRetry(WRITE_DOCS_JOB_NAME, () => runWriteDocumentsIfNeeded(userId));
+    }
   });
 }

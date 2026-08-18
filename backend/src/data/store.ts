@@ -59,8 +59,11 @@ export interface User {
   createdAt: string;
   lastLoginAt: string | null;
   // 마지막 로그인이 로컬(localhost/LAN)에서 왔는지. 공개 URL(터널)로 로그인하면 false.
-  // 자동 배치는 로컬 로그인 유저만 대상으로 삼는다(getBatchUserId). 기존 유저는 이 필드가 없을 수 있다.
+  // (레거시: 예전엔 이 값으로 자동 배치 대상을 골랐으나, 이제는 관리자가 등록한 batchEnabled로 대체됨.)
   lastLoginLocal?: boolean;
+  // 관리자 페이지에서 이 유저를 자동 배치(수집·매칭률·문서작성·알림·종료점검) 대상으로 등록했는지.
+  // true인 유저만 스케줄 배치가 돈다(getBatchUserIds). 필드가 없으면 미등록(대상 아님)으로 본다.
+  batchEnabled?: boolean;
   emailVerified: boolean;
   verifyToken: string | null;
   verifyExpires: string | null; // ISO
@@ -108,21 +111,49 @@ export async function findUserByVerifyToken(token: string): Promise<User | undef
   return (await readUsers()).find((u) => u.verifyToken === token);
 }
 
-// 배치(스크래핑/매칭률/문서작성/알림)는 전체 유저를 돌리지 않고, "가장 최근 로그인 +
-// 프로필 필수값 충족" 유저 1명만 대상으로 한다(로컬 headless Claude CLI 과부하 방지).
-// 대상이 없으면 null(배치 건너뜀).
-export async function getBatchUserId(): Promise<string | null> {
+// 자동 배치(스크래핑/매칭률/문서작성/알림/종료점검) 대상 유저 목록.
+// 관리자가 명시적으로 등록(batchEnabled=true)하고 프로필 필수값을 충족한 유저 전부를 반환한다.
+// 스케줄러는 이 목록을 "사용자별 순차"로 돌린다(로컬 headless Claude CLI가 한 번에 하나만 구동되도록).
+// 반환 순서는 users.json 저장 순서(대체로 가입순)를 따른다. 대상이 없으면 빈 배열(배치 건너뜀).
+export async function getBatchUserIds(): Promise<string[]> {
   const users = await readUsers();
-  let picked: User | null = null;
+  const ids: string[] = [];
   for (const user of users) {
-    if (!user.lastLoginAt) continue;
-    // 공개 URL(터널)로 로그인한 유저는 자동 배치에서 제외한다 — 로컬/LAN 로그인만 배치를 돌린다.
-    // 기존 유저는 lastLoginLocal이 없을 수 있으므로, 명시적으로 false인 경우만 제외한다.
-    if (user.lastLoginLocal === false) continue;
+    if (user.batchEnabled !== true) continue;
     if (!isProfileConfigured(await getProfile(user.userId))) continue;
-    if (!picked || user.lastLoginAt > picked.lastLoginAt!) picked = user;
+    ids.push(user.userId);
   }
-  return picked?.userId ?? null;
+  return ids;
+}
+
+// 관리자 페이지 "배치 대상 등록" 탭에 보여줄 후보 목록.
+// 가입 유저 전체를 이메일·등록 여부·프로필 충족 여부와 함께 반환한다(프로필 미충족은 등록해도 배치에서 빠짐).
+export interface BatchCandidate {
+  userId: string;
+  email: string;
+  batchEnabled: boolean;
+  profileConfigured: boolean;
+  lastLoginAt: string | null;
+}
+
+export async function listBatchCandidates(): Promise<BatchCandidate[]> {
+  const users = await readUsers();
+  const result: BatchCandidate[] = [];
+  for (const user of users) {
+    result.push({
+      userId: user.userId,
+      email: user.email,
+      batchEnabled: user.batchEnabled === true,
+      profileConfigured: isProfileConfigured(await getProfile(user.userId)),
+      lastLoginAt: user.lastLoginAt,
+    });
+  }
+  return result;
+}
+
+// 관리자가 특정 유저의 자동 배치 등록 상태를 켜고 끈다.
+export async function setBatchEnabled(userId: string, enabled: boolean): Promise<void> {
+  await updateUser(userId, { batchEnabled: enabled });
 }
 
 // ==================== 프로필 (profiles/{userId}.json) ====================

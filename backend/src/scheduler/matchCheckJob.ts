@@ -2,36 +2,53 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { getJobPostings, hasProfile } from "../data/store.js";
-import { isCollectedToday, todayLocalKey } from "../utils/date.js";
-import { runManualJob, type RunRecord } from "./runLog.js";
+import type { JobPosting } from "../types.js";
+import { getLatestRun, runManualJob, type RunRecord } from "./runLog.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "../../..");
 
 export const MATCH_CHECK_JOB_NAME = "매칭률조회";
 
-// 대상: 오늘 수집된 공고 중 아직 매칭률 평가표(documents.matchReport)가 없는 공고.
+// 이번 "수집 세션"을 식별한다 = 가장 최근 수집 파이프라인 실행(수동 collect·스케줄 scrape 중 최신).
+// 추천 공고 라우트(routes/jobs.ts)와 동일한 세션 마커를 공유한다(판정 규칙 한 곳).
+async function latestCollectSession(userId: string): Promise<RunRecord | null> {
+  const runs = (await Promise.all([getLatestRun(userId, "collect"), getLatestRun(userId, "scrape")])).filter(
+    (r): r is RunRecord => r !== null,
+  );
+  return runs.sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0] ?? null;
+}
+
+// 대상: "오늘 일자 전체"가 아니라, 방금 그 수집 세션에서 새로 들어온(collectedAt이 세션 시작 이후)
+// 공고 중 아직 매칭률 평가표(documents.matchReport)가 없는 공고만.
+// 같은 날이라도 별개 세션(예: 08시 스케줄 vs 오후 수동 UPDATE)의 공고는 세션 경계로 분리된다.
+// 이미 이전 세션에서 매칭표가 채워진 공고를 다시 스캔·재생성하지 않는다(토큰 절약).
 // 매칭률은 documents.matchReport 한 곳에만 쌓는다(문서 작성 배치와 동일 필드).
-// collectedAt 날짜 비교는 utils/date.ts의 로컬 날짜 기준을 공유한다(writeDocumentsJob·
-// deleteTodaysJobPostings·추천 팝업과 동일 규칙).
-async function countTargets(userId: string): Promise<number> {
+async function collectTargets(userId: string): Promise<JobPosting[]> {
+  const session = await latestCollectSession(userId);
+  if (!session) return [];
+  const sessionStart = new Date(session.startedAt).getTime();
   const jobs = await getJobPostings(userId);
-  return jobs.filter((j) => isCollectedToday(j.collectedAt) && !j.documents?.matchReport).length;
+  return jobs.filter(
+    (j) => new Date(j.collectedAt).getTime() >= sessionStart && !j.documents?.matchReport,
+  );
 }
 
 // Claude Code CLI를 headless로 실행해 매칭률 사전 평가표(§6-1/6-2)만 작성하게 한다.
 // 자소서·경력기술서는 만들지 않고 documents.matchReport만 채운다. 나머지 문서 필드(coverLetter·intro·
 // workExperience)는 빈 문자열로 둬, 이후 문서 작성 배치가 coverLetter가 비어 있음을 보고 자소서를 채운다.
 // 프롬프트는 셸 이스케이프 문제를 피하기 위해 stdin으로 전달한다.
-// todayKey는 서버가 계산한 로컬 날짜다. collectedAt은 UTC ISO라 앞 10자를 그대로 비교하면
-// 로컬 00:00~09:00 수집분이 전날로 밀리므로, 판정 기준을 프롬프트에 명시해 넘긴다.
-function runClaudeMatchCheck(userId: string, todayKey: string): Promise<void> {
+// 대상은 서버가 세션 경계로 이미 확정해 id 목록으로 넘긴다. Claude는 "오늘 수집분"을 스스로 찾지 말고
+// 지정된 id의 공고만 처리한다(이전 세션·이미 처리된 공고를 훑지 않게 해 토큰을 아낀다).
+function runClaudeMatchCheck(userId: string, targets: JobPosting[]): Promise<void> {
   const jobsFile = `backend/src/data/jobPostings/${userId}.json`;
   const profileFile = `backend/src/data/profiles/${userId}.json`;
+  const targetList = targets.map((j) => `  - id=${j.id} | ${j.company} | ${j.title}`).join("\n");
   const prompt = [
     "매칭률 조회 배치를 실행해줘.",
-    `대상: ${jobsFile}에서 collectedAt(UTC ISO)을 로컬 시간대로 변환한 날짜가 ${todayKey}인 공고 중,`,
-    "documents.matchReport가 없는 공고 전부(documents가 null이거나, documents는 있어도 matchReport가 비어 있는 경우).",
+    `대상: ${jobsFile}에서 아래 id 목록의 공고 ${targets.length}건만 처리해.`,
+    "이 목록에 없는 공고는 절대 읽거나 수정하지 마(오늘 날짜라고 다른 공고를 추가로 훑지 마).",
+    targetList,
     "각 대상 공고에 대해 .claude/skills/write-documents/SKILL.md의",
     "'§6-1 매칭률 사전 평가 + §6-2 지원 권장도' 형식만 작성해(자소서·경력기술서·소개는 만들지 마).",
     "- 필수 자격요건/스택/담당업무/우대사항 매칭, 강점 Top 3, 갭 Top 3~5를 포함하고,",
@@ -79,12 +96,11 @@ export async function runMatchCheckIfNeeded(userId: string): Promise<RunRecord |
     console.log("[matchCheckJob] 프로필 미작성 — 매칭률 조회 배치 건너뜀");
     return null;
   }
-  const targetCount = await countTargets(userId);
-  if (targetCount === 0) {
-    console.log("[matchCheckJob] 매칭률 평가 대상 없음 — 건너뜀");
+  const targets = await collectTargets(userId);
+  if (targets.length === 0) {
+    console.log("[matchCheckJob] 이번 수집 세션 신규 공고 없음(또는 이미 매칭표 있음) — 건너뜀");
     return null;
   }
-  console.log(`[matchCheckJob] 매칭률 평가 대상 ${targetCount}건 — Claude 매칭률 조회 배치 시작`);
-  const todayKey = todayLocalKey();
-  return runManualJob(userId, MATCH_CHECK_JOB_NAME, () => runClaudeMatchCheck(userId, todayKey));
+  console.log(`[matchCheckJob] 이번 세션 신규 공고 ${targets.length}건 — Claude 매칭률 조회 배치 시작`);
+  return runManualJob(userId, MATCH_CHECK_JOB_NAME, () => runClaudeMatchCheck(userId, targets));
 }

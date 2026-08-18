@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import http from "node:http";
 import express from "express";
 import { reloadSkillFile } from "./config/skillFileParser.js";
-import { deleteImminentJobPostings, getBatchUserId } from "./data/store.js";
+import { deleteImminentJobPostings, getBatchUserIds } from "./data/store.js";
 import { adminRouter } from "./routes/admin.js";
 import { authRouter } from "./routes/auth.js";
 import { collectRouter } from "./routes/collect.js";
@@ -71,9 +71,9 @@ server.listen(PORT, () => {
   // 직전 종료가 비정상적이었다면 "running"으로 멈춰있는 이력을 failed로 정리한다(전체 유저).
   reconcileInterruptedRuns().catch((error) => console.error("[reconcileInterruptedRuns] failed:", error));
 
-  // 기동 시점에 오늘·내일 마감 공고를 즉시 정리한다(배치 대상 유저 1명 기준).
-  getBatchUserId()
-    .then((userId) => (userId ? deleteImminentJobPostings(userId) : undefined))
+  // 기동 시점에 오늘·내일 마감 공고를 즉시 정리한다(배치 등록 유저 전부 기준).
+  getBatchUserIds()
+    .then((userIds) => Promise.all(userIds.map((userId) => deleteImminentJobPostings(userId))))
     .catch((error) => console.error("[deleteImminentJobPostings] failed:", error));
 
   catchUpNotifyJob().catch((error) => console.error("[catchUpNotifyJob] failed:", error));

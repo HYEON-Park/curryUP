@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { authMiddleware } from "../auth/jwt.js";
-import { getHiddenJobs, getJobPostings, hasProfile, permanentDeleteAllHiddenJobs, permanentDeleteHiddenJobs, restoreJob } from "../data/store.js";
+import { getHiddenJobs, getJobPostings, hasProfile, listBatchCandidates, permanentDeleteAllHiddenJobs, permanentDeleteHiddenJobs, restoreJob, setBatchEnabled } from "../data/store.js";
 import { runClosedCheckNow } from "../scheduler/closedCheckJob.js";
 import { MATCH_CHECK_JOB_NAME, runMatchCheckIfNeeded } from "../scheduler/matchCheckJob.js";
 import { runNotifyNow } from "../scheduler/notifyJob.js";
@@ -76,6 +76,24 @@ adminRouter.post("/closed-check/run", (req, res) => {
   const userId = req.user!.userId;
   runClosedCheckNow(userId).catch((error) => console.error("[admin] closed check batch failed:", error));
   res.status(202).json({ started: true });
+});
+
+// ── 배치 대상 등록 ──────────────────────────────────────────────
+// 가입 유저 전체를 이메일·등록 여부·프로필 충족 여부와 함께 반환한다.
+// 관리자가 등록(batchEnabled)한 유저만 자동 배치(스케줄)가 사용자별 순차로 돈다.
+adminRouter.get("/batch-users", async (_req, res) => {
+  res.json({ items: await listBatchCandidates() });
+});
+
+// 특정 유저의 자동 배치 등록 상태를 켜고 끈다.
+adminRouter.patch("/batch-users/:userId", async (req, res) => {
+  const { enabled } = req.body as { enabled?: unknown };
+  if (typeof enabled !== "boolean") {
+    res.status(400).json({ error: "enabled(boolean) required" });
+    return;
+  }
+  await setBatchEnabled(req.params.userId, enabled);
+  res.json({ userId: req.params.userId, batchEnabled: enabled });
 });
 
 adminRouter.get("/favorites", async (req, res) => {

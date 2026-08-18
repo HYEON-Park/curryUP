@@ -5,11 +5,12 @@ import {
   deleteImminentJobPostings,
   deleteTodaysJobPostings,
   findUserById,
-  getBatchUserId,
+  getBatchUserIds,
   hasProfile,
   saveJobPostings,
 } from "../data/store.js";
 import { runScrapeAndMatch } from "../pipeline/runScrapeAndMatch.js";
+import { getRecommendations } from "../utils/recommendations.js";
 import { runMatchCheckIfNeeded } from "./matchCheckJob.js";
 import { runRatingCheckNow } from "./ratingCheckJob.js";
 import { runManualJob, runScheduledJob, type RunRecord } from "./runLog.js";
@@ -37,27 +38,31 @@ async function scrapeTask(userId: string): Promise<void> {
   // 매칭률 산정 후, 오늘 수집분 중 매칭률 60% 이상 공고의 회사만 평점 조회한다.
   await runRatingCheckNow(userId);
   // UPDATE 완료 시 해당 사용자 이메일로 완료 알림 메일을 보낸다(발송 실패는 배치를 막지 않음).
+  // 오늘의 추천 공고(매칭률 70% 이상)가 있으면 메일에 함께 싣는다.
   const user = await findUserById(userId);
   if (user?.email) {
+    const { items } = await getRecommendations(userId);
     await sendUpdateCompleteEmail(user.email, {
       collected: matchResult.collected,
       newlyMatched: matchResult.newlyMatched,
-    }).catch((error) => console.error("[scrapeJob] UPDATE 완료 메일 발송 실패:", error));
+    }, items).catch((error) => console.error("[scrapeJob] UPDATE 완료 메일 발송 실패:", error));
   }
 }
 
 // 매일 07:00 한 번, D-day 지난 공고를 정리하고 새 공고를 수집+매칭한 뒤 평점 조회 → 매칭률 조회까지
 // 이어서 수행한다(대시보드 "공고 UPDATE" 버튼과 동일한 자동화 흐름).
 // 이후 08:00에는 별도 크론(writeDocumentsJob)이 당일 수집분 문서 작성 배치를 실행한다.
-// 배치 대상은 "가장 최근 로그인 + 프로필 충족" 유저 1명(getBatchUserId). 대상이 없으면 건너뛴다.
+// 배치 대상은 관리자가 등록한 유저 전부(getBatchUserIds). 사용자별 순차로 돈다(CLI 1개씩). 대상이 없으면 건너뛴다.
 export function startScrapeJob(): void {
   cron.schedule(`${SCHEDULED_MINUTE} ${SCHEDULED_HOUR} * * *`, async () => {
-    const userId = await getBatchUserId();
-    if (!userId) {
+    const userIds = await getBatchUserIds();
+    if (userIds.length === 0) {
       console.log("[scrapeJob] 배치 대상 유저 없음 — 스크래핑 스케줄 건너뜀");
       return;
     }
-    await withScheduledRetry(JOB_NAME, () => runScheduledJob(userId, JOB_NAME, () => scrapeTask(userId)));
+    for (const userId of userIds) {
+      await withScheduledRetry(JOB_NAME, () => runScheduledJob(userId, JOB_NAME, () => scrapeTask(userId)));
+    }
   });
 }
 

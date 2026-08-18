@@ -1,6 +1,6 @@
 # PROGRESS
 
-> 마지막 갱신: 2026-08-13
+> 마지막 갱신: 2026-08-14
 
 현재 무엇을 하는 중이고 다음에 뭘 할지 추적하는 문서. 세션 시작 시 이 파일을 먼저 읽는다.
 (변경 이력 자체는 `CHANGELOG.md`, 구조 설명은 `README.md`가 담당한다.)
@@ -58,6 +58,15 @@
 - **[내일(2026-08-07) 체크] 배치 재실행(재배치) 기능 라이브 검증** — 오늘 밤 스케줄 배치(scrape 20:00 / write-documents 21:00, 그리고 09:00·19:00)가 모두 정상 실행됐는지 먼저 확인. 실패가 발생했다면 5분 뒤 자동 재실행 + 더블 실패 OS 알림이 실제로 동작했는지 관찰(5분 지연 특성상 라이브 실측 전). 전부 성공이면 재시도 경로는 트리거되지 않으므로 "성공만 확인"으로 종결.
 
 ## 최근 완료
+
+### 2026-08-14 — 배치 대상 유저 등록(관리자) + 매칭배치 세션범위 + UPDATE 완료메일 추천공고
+
+- **배치 대상 등록**: 자동 배치 대상을 `getBatchUserId`(로컬 로그인 유저 1명) → **관리자가 등록한 유저 전부**로 전환. `User.batchEnabled`(users.json 재사용, 새 파일·새 배치 없음)로 판정. 스케줄러 4개(scrape·writeDocuments·notify·closedCheck)+server.ts 기동정리를 **사용자별 순차 루프**(`for..await`)로 교체 — Claude CLI가 항상 1개만 구동(결정: 사용자별 순차 / 등록목록 완전대체 / 등록만·실행은 cron).
+  - 신규 store 함수 `getBatchUserIds`·`listBatchCandidates`·`setBatchEnabled`, admin 라우트 `GET/PATCH /admin/batch-users`, 프론트 `AdminBatchPage` "배치 대상 등록" 탭 + client `fetchBatchUsers`·`setBatchUserEnabled`.
+  - ⚠️ 마이그레이션: `batchEnabled` 없는 기존 유저는 대상에서 빠짐 → hyeon 본인도 관리자 화면에서 한 번 등록해야 스케줄 배치가 다시 돎.
+- **매칭률 조회 배치 세션범위화**: `isCollectedToday`(오늘 일자 전체) → **최근 수집 세션(collect/scrape run) startedAt 이후 + matchReport 없는 공고**만 대상. 서버가 대상 id 목록을 프롬프트에 명시 → Claude가 파일 전체 스캔 안 함(토큰 절약). 같은 날 08시 세션·오후 세션 분리. `matchCheckJob.ts`. 메모리 [[feedback_matchcheck_session_scope]].
+- **UPDATE 완료 메일에 오늘의 추천공고**: 추천 판정을 `utils/recommendations.getRecommendations`로 단일화(라우트에서 중복 이사 — `matchOverall`·`compareJobs`·`priorityRank` 공유). `mailer.sendUpdateCompleteEmail(to, summary, recommendations)`에 70%+ 목록 섹션 추가(없으면 생략). `collect.ts`·`scrapeJob.ts`가 전달. 테스트 메일 발송 검증 완료.
+- 백·프론트 `tsc --noEmit` 통과. **미검증**: 4000 라이브 화면(배치 대상 등록 탭 토글·실제 스케줄 다유저 순차 실행). 커밋 안 함.
 
 ### 2026-08-13 — 프로필 수정: PDF 이력서 자동 읽기 (CLI headless)
 

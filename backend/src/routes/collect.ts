@@ -6,6 +6,7 @@ import { runScrapeAndMatch } from "../pipeline/runScrapeAndMatch.js";
 import { runMatchCheckIfNeeded } from "../scheduler/matchCheckJob.js";
 import { runRatingCheckNow } from "../scheduler/ratingCheckJob.js";
 import { runManualJob } from "../scheduler/runLog.js";
+import { getRecommendations } from "../utils/recommendations.js";
 
 export const collectRouter = Router();
 collectRouter.use(authMiddleware);
@@ -38,12 +39,15 @@ collectRouter.post("/", async (req, res) => {
   runMatchCheckIfNeeded(userId)
     .then(() => runRatingCheckNow(userId))
     // 매칭률·평점 조회까지 끝나면(=UPDATE 완료) 해당 사용자 이메일로 완료 알림 메일을 보낸다.
-    .then(() =>
-      sendUpdateCompleteEmail(req.user!.email, {
-        collected: result?.collected ?? 0,
-        newlyMatched: result?.newlyMatched ?? 0,
-      })
-    )
+    // 오늘의 추천 공고(매칭률 70% 이상)가 있으면 메일에 함께 싣는다.
+    .then(async () => {
+      const { items } = await getRecommendations(userId);
+      await sendUpdateCompleteEmail(
+        req.user!.email,
+        { collected: result?.collected ?? 0, newlyMatched: result?.newlyMatched ?? 0 },
+        items,
+      );
+    })
     .catch((error) => console.error("[manual collect] match/rating/mail failed:", error));
 
   res.json(result);

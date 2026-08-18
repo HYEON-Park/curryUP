@@ -1,5 +1,5 @@
 import cron from "node-cron";
-import { getBatchUserId, getJobPostings, saveJobPostings } from "../data/store.js";
+import { getBatchUserIds, getJobPostings, saveJobPostings } from "../data/store.js";
 import { findScraperFor } from "../scrapers/index.js";
 import { attachClosedJobs, runManualJob, runScheduledJob, type RunRecord } from "./runLog.js";
 import { withScheduledRetry } from "./scheduledRetry.js";
@@ -81,14 +81,16 @@ export function runClosedCheckNow(userId: string): Promise<RunRecord> {
   return runClosedCheck(userId, "manual");
 }
 
-// 매일 19:00, 배치 대상 유저 1명(getBatchUserId)의 수집 공고 진행중/종료 여부를 점검한다.
+// 매일 19:00, 관리자가 등록한 유저 전부(getBatchUserIds)의 수집 공고 진행중/종료 여부를 사용자별 순차로 점검한다.
 export function startClosedCheckJob(): void {
   cron.schedule(`${SCHEDULED_MINUTE} ${SCHEDULED_HOUR} * * *`, async () => {
-    const userId = await getBatchUserId();
-    if (!userId) {
+    const userIds = await getBatchUserIds();
+    if (userIds.length === 0) {
       console.log("[closedCheckJob] 배치 대상 유저 없음 — 종료 점검 스케줄 건너뜀");
       return;
     }
-    await runClosedCheck(userId, "scheduled");
+    for (const userId of userIds) {
+      await runClosedCheck(userId, "scheduled");
+    }
   });
 }

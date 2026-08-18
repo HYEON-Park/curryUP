@@ -270,6 +270,32 @@ export async function toggleFavorite(id: string): Promise<{ isFavorite: boolean 
   return res.json();
 }
 
+// 배치 대상 등록: 가입 유저 목록(이메일·등록 여부·프로필 충족 여부)을 불러온다.
+export interface BatchCandidate {
+  userId: string;
+  email: string;
+  batchEnabled: boolean;
+  profileConfigured: boolean;
+  lastLoginAt: string | null;
+}
+
+export async function fetchBatchUsers(): Promise<BatchCandidate[]> {
+  const res = await authFetch(`/admin/batch-users`);
+  if (!res.ok) throw new Error("배치 대상 목록을 불러오지 못했습니다.");
+  const data = (await res.json()) as { items: BatchCandidate[] };
+  return data.items;
+}
+
+// 특정 유저의 자동 배치 등록 상태를 켜고 끈다.
+export async function setBatchUserEnabled(userId: string, enabled: boolean): Promise<void> {
+  const res = await authFetch(`/admin/batch-users/${userId}`, {
+    method: "PATCH",
+    headers: jsonHeaders(),
+    body: JSON.stringify({ enabled }),
+  });
+  if (!res.ok) throw new Error("배치 대상 변경에 실패했습니다.");
+}
+
 export async function fetchFavoriteJobs(): Promise<JobPosting[]> {
   const res = await authFetch(`/admin/favorites`);
   return res.json();

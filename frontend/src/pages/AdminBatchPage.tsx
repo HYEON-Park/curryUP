@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  fetchBatchUsers,
   fetchFavoriteJobs,
   fetchHiddenJobs,
   fetchRuns,
@@ -11,7 +12,9 @@ import {
   runMatchCheckBatch,
   runWriteDocsBatch,
   runScrapeBatch,
+  setBatchUserEnabled,
   toggleFavorite,
+  type BatchCandidate,
 } from "../api/client";
 import type { HiddenJobPosting, JobPosting, RunRecord } from "../types";
 import { ensureProfileOrRedirect } from "../utils/profileGuard";
@@ -488,8 +491,8 @@ function BatchMonitoringTab() {
                 <td>{formatTime(run.startedAt)}</td>
                 <td>{formatTime(run.finishedAt)}</td>
                 <td>
-                  <span className="run-trigger">[{TRIGGER_LABELS[run.trigger]}]</span>{" "}
-                  <span className={`status-badge ${run.status}`}>{STATUS_LABELS[run.status]}</span>
+                  {/*<span className="run-trigger">[{TRIGGER_LABELS[run.trigger]}]</span>{" "}*/}
+                  <span className={`status-badge ${run.status}`}>{TRIGGER_LABELS[run.trigger]} {STATUS_LABELS[run.status]}</span>
                 </td>
               </tr>
               {expanded.has(run.id) &&
@@ -538,9 +541,96 @@ function BatchMonitoringTab() {
   );
 }
 
+// ─── 배치 대상 등록 탭 ───────────────────────────────────────────────────────
+
+// 가입 유저 목록에서 자동 배치(수집·매칭률·문서작성·알림·종료점검) 대상을 체크박스로 등록/해제한다.
+// 등록(batchEnabled)된 유저만 스케줄 배치가 사용자별 순차로 돈다. 프로필 미충족 유저는 등록해도 배치에서 빠진다.
+function BatchTargetTab() {
+  const [users, setUsers] = useState<BatchCandidate[]>([]);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    try {
+      setUsers(await fetchBatchUsers());
+    } catch {
+      setError("목록을 불러오지 못했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function handleToggle(user: BatchCandidate, enabled: boolean) {
+    setBusyId(user.userId);
+    setError(null);
+    // 낙관적 업데이트: 실패 시 재조회로 되돌린다.
+    setUsers((prev) => prev.map((u) => (u.userId === user.userId ? { ...u, batchEnabled: enabled } : u)));
+    try {
+      await setBatchUserEnabled(user.userId, enabled);
+    } catch {
+      setError("변경에 실패했습니다.");
+      await load();
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  if (loading) return <p className="admin-status">불러오는 중...</p>;
+  if (users.length === 0) return <p className="admin-status">가입한 사용자가 없습니다.</p>;
+
+  const enabledCount = users.filter((u) => u.batchEnabled).length;
+
+  return (
+    <div>
+      <p className="admin-status">
+        등록된 배치 대상 <b>{enabledCount}</b>명 / 전체 {users.length}명 · 등록한 사용자만 스케줄 배치가 실행됩니다.
+      </p>
+      {error && <p className="doc-generate-error">{error}</p>}
+      <table className="run-table">
+        <thead>
+          <tr>
+            <th>이메일</th>
+            <th>프로필</th>
+            <th>마지막 로그인</th>
+            <th>배치 등록</th>
+          </tr>
+        </thead>
+        <tbody>
+          {users.map((user) => (
+            <tr key={user.userId}>
+              <td>{user.email}</td>
+              <td>{user.profileConfigured ? "완료" : "미완료"}</td>
+              <td>{user.lastLoginAt ? formatDate(user.lastLoginAt) : "-"}</td>
+              <td>
+                <label className="batch-toggle">
+                  <input
+                    type="checkbox"
+                    checked={user.batchEnabled}
+                    disabled={busyId === user.userId}
+                    onChange={(e) => handleToggle(user, e.target.checked)}
+                  />
+                  <span>{user.batchEnabled ? "등록됨" : "미등록"}</span>
+                </label>
+                {user.batchEnabled && !user.profileConfigured && (
+                  <span className="batch-warn"> · 프로필 미완료라 실제 배치에서는 제외됩니다</span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // ─── 관리자 페이지 (탭 컨테이너) ─────────────────────────────────────────────
 
-type AdminTab = "dashboard" | "favorites" | "batch";
+type AdminTab = "dashboard" | "favorites" | "batch" | "batch-targets";
 
 export function AdminBatchPage() {
   const [tab, setTab] = useState<AdminTab>("batch");
@@ -558,13 +648,18 @@ export function AdminBatchPage() {
         <button className={tab === "batch" ? "active" : ""} onClick={() => setTab("batch")}>
           배치 모니터링 및 제어
         </button>
+        <button className={tab === "batch-targets" ? "active" : ""} onClick={() => setTab("batch-targets")}>
+          배치 대상 등록
+        </button>
       </div>
       {tab === "dashboard" ? (
         <DashboardManagementTab />
       ) : tab === "favorites" ? (
         <FavoritesTab />
-      ) : (
+      ) : tab === "batch" ? (
         <BatchMonitoringTab />
+      ) : (
+        <BatchTargetTab />
       )}
     </div>
   );

@@ -1,5 +1,5 @@
 import cron from "node-cron";
-import { getBatchUserId, getProfile } from "../data/store.js";
+import { getBatchUserIds, getProfile } from "../data/store.js";
 import { notifyWithLink } from "../notify/osNotifier.js";
 import { catchUpIfMissed, runManualJob, runScheduledJob, type RunRecord } from "./runLog.js";
 import { withScheduledRetry } from "./scheduledRetry.js";
@@ -28,20 +28,22 @@ async function notifyTask(userId: string, force = false): Promise<void> {
 }
 
 // 매일 09:00, 당일 00:00~08:59 사이 프로필을 수정하지 않았다면 알림.
-// 대상은 "가장 최근 로그인 + 프로필 충족" 유저 1명(getBatchUserId). 대상이 없으면 건너뛴다.
+// 대상은 관리자가 등록한 유저 전부(getBatchUserIds). 사용자별 순차. 대상이 없으면 건너뛴다.
 export function startNotifyJob(): void {
   cron.schedule(`${SCHEDULED_MINUTE} ${SCHEDULED_HOUR} * * *`, async () => {
-    const userId = await getBatchUserId();
-    if (!userId) return;
-    await withScheduledRetry(JOB_NAME, () => runScheduledJob(userId, JOB_NAME, () => notifyTask(userId)));
+    const userIds = await getBatchUserIds();
+    for (const userId of userIds) {
+      await withScheduledRetry(JOB_NAME, () => runScheduledJob(userId, JOB_NAME, () => notifyTask(userId)));
+    }
   });
 }
 
-// 백엔드가 09:00 이후에 켜졌고 당일 알림 처리 기록이 없다면 즉시 따라잡는다.
+// 백엔드가 09:00 이후에 켜졌고 당일 알림 처리 기록이 없다면 즉시 따라잡는다(등록 유저 전부, 사용자별 순차).
 export async function catchUpNotifyJob(): Promise<void> {
-  const userId = await getBatchUserId();
-  if (!userId) return;
-  await catchUpIfMissed(userId, JOB_NAME, SCHEDULED_HOUR, SCHEDULED_MINUTE, () => notifyTask(userId));
+  const userIds = await getBatchUserIds();
+  for (const userId of userIds) {
+    await catchUpIfMissed(userId, JOB_NAME, SCHEDULED_HOUR, SCHEDULED_MINUTE, () => notifyTask(userId));
+  }
 }
 
 // 관리자 페이지: "오늘 업데이트했는지" 체크를 무시하고 즉시 발송한다(로그인 유저 기준).

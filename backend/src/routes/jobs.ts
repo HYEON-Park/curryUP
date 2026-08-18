@@ -1,52 +1,19 @@
 import { Router } from "express";
 import { authMiddleware } from "../auth/jwt.js";
 import { getJobPostings, hideJob, toggleFavorite } from "../data/store.js";
-import { getLatestRun } from "../scheduler/runLog.js";
 import {
   getSingleDocState,
   isDocType,
   startSingleDocGeneration,
 } from "../scheduler/singleDocJob.js";
-import type { JobPosting } from "../types.js";
-import { localDateKey } from "../utils/date.js";
-import { daysUntilDeadline } from "../utils/deadline.js";
+import { compareJobs, getRecommendations } from "../utils/recommendations.js";
 
 export const jobsRouter = Router();
 jobsRouter.use(authMiddleware);
 const PAGE_SIZE = 12;
 
-// 매칭표에서 "종합 매칭률: N%" 값을 추출한다. (프런트 utils/matchReport.ts와 동일 규칙)
-function matchOverall(text: string | null | undefined): number | null {
-  if (!text) return null;
-  const m = text.match(/종합\s*매칭률\s*[:：]?\s*(\d+)\s*%/);
-  return m ? Number(m[1]) : null;
-}
-
-// 대시보드 카드 강조 조건과 동일(프런트 isHighlighted): 즐겨찾기이거나 매칭률 종합 70% 이상.
-// 매칭률은 documents.matchReport 한 곳에만 쌓인다(매칭률 조회 배치·문서 작성 배치 공통).
-// 상단 고정 우선순위: 즐겨찾기(0) > 매칭률 70%+(1) > 일반(2). 낮을수록 위로.
-function priorityRank(job: JobPosting): number {
-  if (job.isFavorite === true) return 0;
-  const overall = matchOverall(job.documents?.matchReport);
-  if (overall !== null && overall >= 70) return 1;
-  return 2;
-}
-
-// 먼저 우선순위 티어(즐겨찾기 → 매칭률 70%+ → 일반)로 올리고, 같은 티어 안에서는 기존 기준을 적용한다:
-// D-day가 긴(남은 일수가 많은) 순, 같으면 기업명 가나다순, 마감일이 없는 공고는 맨 뒤(그 안에서 가나다순).
-function compareJobs(a: JobPosting, b: JobPosting): number {
-  const rankDiff = priorityRank(a) - priorityRank(b);
-  if (rankDiff !== 0) return rankDiff;
-
-  const aDays = daysUntilDeadline(a.deadline);
-  const bDays = daysUntilDeadline(b.deadline);
-
-  if (aDays === null && bDays === null) return a.company.localeCompare(b.company, "ko");
-  if (aDays === null) return 1;
-  if (bDays === null) return -1;
-  if (aDays !== bDays) return bDays - aDays;
-  return a.company.localeCompare(b.company, "ko");
-}
+// 정렬(compareJobs)·추천 판정(getRecommendations) 규칙은 utils/recommendations.ts 한 곳에서
+// 공유한다(추천 팝업·UPDATE 완료 메일과 동일 규칙).
 
 // 마감 임박(D-0~N) 공고 정리는 deleteImminentJobPostings()(서버 기동 시 + 매일 08:00 scrapeTask)가
 // 전담하므로, 여기서는 순수하게 저장된 목록을 읽어 응답하기만 한다.
@@ -84,27 +51,9 @@ jobsRouter.get("/all", async (req, res) => {
 jobsRouter.get("/recommendations", async (req, res) => {
   const userId = req.user!.userId;
 
-  // 세션 식별: 수집 파이프라인(수동 collect·스케줄 scrape)의 가장 최근 실행.
-  // 수동 UPDATE(collect)든 스케줄 배치(scrape)든 같은 산출(매칭표)을 내므로 둘 다 인정한다.
-  const pipelineRuns = (await Promise.all([getLatestRun(userId, "collect"), getLatestRun(userId, "scrape")])).filter(
-    (r): r is NonNullable<typeof r> => r !== null,
-  );
-  const sessionRun = pipelineRuns.sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0] ?? null;
-  const sessionId = sessionRun ? sessionRun.id : null;
-
-  // 추천 항목: 그 세션이 수집한 날짜의 공고 중 미종료·종합 매칭률 70% 이상.
-  // runLog의 date도 같은 로컬 날짜 기준이라 collectedAt의 로컬 날짜키와 그대로 비교한다.
-  const jobs = await getJobPostings(userId);
-  const items = sessionRun
-    ? jobs
-        .filter((j) => localDateKey(j.collectedAt) === sessionRun.date)
-        .filter((j) => !j.disabled) // 종료 공고는 추천에서 제외.
-        .filter((j) => {
-          const overall = matchOverall(j.documents?.matchReport);
-          return overall !== null && overall >= 70;
-        })
-        .sort(compareJobs)
-    : [];
+  // 추천 판정(세션 식별·70% 문턱·미종료·정렬)은 utils/recommendations.getRecommendations 한 곳에서
+  // 수행한다(UPDATE 완료 메일과 동일 규칙 공유).
+  const { sessionId, items } = await getRecommendations(userId);
 
   res.json({ sessionId, items });
 });

@@ -1517,6 +1517,22 @@ button[type="submit"] {
   color: var(--text);
 }
 
+/* 배치 대상 등록 탭: 등록 토글 */
+.batch-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.batch-toggle input {
+  cursor: pointer;
+}
+.batch-warn {
+  font-size: 12px;
+  color: #c07a00;
+}
+
 .run-table {
   width: 100%;
   border-collapse: collapse;
