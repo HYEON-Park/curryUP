@@ -27,12 +27,25 @@
 
 재시작 요청 시 반드시 아래 순서로 처리한다.
 
-0. **AI 배치 실행 여부 먼저 확인**
+0. **AI 배치(및 모든 배치) 실행 여부 먼저 확인**
+
+   `/api/admin/ai/status`는 이제 **인증 필요(401)·유저별** 라우트라 인증 없이 못 부른다.
+   대신 runLog 파일을 직접 읽어 `status: "running"` 레코드가 있는지 확인한다
+   (`isJobRunning`이 보는 것과 동일한 파일. 모든 유저·모든 배치를 커버).
    ```powershell
-   Invoke-RestMethod "http://localhost:4000/api/admin/ai/status"
+   $running = @()
+   Get-ChildItem "C:\R\backend\src\data\runLog\*.json" -ErrorAction SilentlyContinue | ForEach-Object {
+     $f = $_
+     try {
+       (Get-Content $f.FullName -Raw -Encoding UTF8 | ConvertFrom-Json) | ForEach-Object {
+         if ($_.status -eq "running") { $running += "$($f.BaseName) / $($_.jobName)" }
+       }
+     } catch {}
+   }
+   $running
    ```
-   - `running: true` → 사용자에게 알리고 **재시작 중단**. 명시적 허락 없이 절대 재시작하지 않는다.
-   - `running: false` 또는 서버가 꺼진 상태 → 다음 단계 진행
+   - `running`에 항목이 있으면 → 사용자에게 알리고 **재시작 중단**. 명시적 허락 없이 절대 재시작하지 않는다.
+   - 비어 있으면 → 다음 단계 진행 (오래된 stale 레코드로 의심되면 사용자에게 확인 후 진행)
 
 1. WMI로 백엔드 관련 프로세스 수 확인
 2. 1개만 구동 중 → kill 후 재시작
@@ -40,11 +53,14 @@
 4. 0개 → 바로 기동
 
 ```powershell
-# 전체 정리
+# 전체 정리 — node.exe로 한정한다.
+# (CommandLine만 매칭하면 그 문자열을 담은 진단용 powershell까지 걸려 가짜 양성이 난다.)
 Get-WmiObject Win32_Process | Where-Object {
-  $_.CommandLine -like "*tsx*server*" -or
-  $_.CommandLine -like "*npm run dev*" -or
-  ($_.CommandLine -like "*tsx*" -and $_.CommandLine -like "*R\\backend*")
+  $_.Name -eq "node.exe" -and (
+    $_.CommandLine -like "*tsx*server*" -or
+    $_.CommandLine -like "*npm run dev*" -or
+    ($_.CommandLine -like "*tsx*" -and $_.CommandLine -like "*R\\backend*")
+  )
 } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 
 # 하나만 기동 — 반드시 세션 독립(detached)으로 띄운다.
@@ -56,6 +72,12 @@ Start-Process -FilePath "node" -ArgumentList "--import","tsx","src/server.ts" `
 ```
 
 서버 로그: `%LOCALAPPDATA%\curryUP\server.log` (기동마다 덮어씀)
+
+**사용자 수동 실행용 bat** (개발 모드 + ngrok, 창 유지):
+- 시작: `C:\R\start-dev.bat` — 백엔드(`npm run dev`) + `ngrok http 4000`을 각각 자체 창으로 띄운다.
+- 재시작: `C:\R\restart-dev.bat` — 위 0번 안전장치(runLog 확인) → node.exe 정리 → `start-dev.bat` 호출.
+  (정리 로직은 `C:\R\scripts\restart-dev.ps1`.)
+- Claude가 재시작할 때는 이 bat이 아니라 위의 detached(hidden) 방식으로 띄운다. bat은 창에 묶여 세션과 함께 죽는다.
 
 ## 작업 범위
 

@@ -36,3 +36,8 @@ backend/src/data/runLog/
 .claude/settings.local.json
 backend/run_single_job.mts
 backend/scripts/setup.zip
+
+# 로컬 개발 실행용 스크립트 (사용자 수동 실행용 — 커밋하지 않음)
+start-dev.bat
+restart-dev.bat
+scripts/restart-dev.ps1

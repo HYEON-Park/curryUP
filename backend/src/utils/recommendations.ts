@@ -8,6 +8,18 @@ import { matchOverallPercent } from "./matchReport.js";
 // 추천 공고 문턱: 종합 매칭률 이 값 이상이면 추천 대상(대시보드 카드 강조·추천 팝업·UPDATE 완료 메일 공통).
 export const RECOMMEND_MIN_PERCENT = 70;
 
+// 추천 공고 평점 문턱: 잡플래닛 평점(회사 평점)이 이 값 이상인 공고만 추천한다.
+// 평점 조회 배치는 매칭률 조회 이후 실행되므로 추천 판정 시점엔 rating이 채워져 있다.
+// 평점이 없는(null·조회 실패) 공고는 문턱을 판단할 수 없어 추천에 포함한다(평점 미확인으로 배제하지 않음).
+export const RECOMMEND_MIN_RATING = 2.8;
+
+// rating은 "3.6"·"2.9" 같은 문자열(잡플래닛 텍스트) 또는 null. 숫자로 파싱하고, 파싱 불가면 null.
+export function parseRating(rating: string | null | undefined): number | null {
+  if (rating == null) return null;
+  const n = Number.parseFloat(rating);
+  return Number.isNaN(n) ? null : n;
+}
+
 // 대시보드 카드 강조 조건과 동일(프런트 isHighlighted): 즐겨찾기이거나 매칭률 종합 70% 이상.
 // 매칭률은 documents.matchReport 한 곳에만 쌓인다(매칭률 조회 배치·문서 작성 배치 공통).
 // 상단 고정 우선순위: 즐겨찾기(0) > 매칭률 70%+(1) > 일반(2). 낮을수록 위로.
@@ -38,7 +50,7 @@ export function compareJobs(a: JobPosting, b: JobPosting): number {
 // 이 함수를 공유한다 — 판정 규칙을 프런트/백엔드 여러 곳에 복제하지 않는다(CLAUDE.md).
 //
 // 세션 식별: 수집 파이프라인(수동 collect·스케줄 scrape)의 가장 최근 실행. 둘 다 같은 산출(매칭표)을 낸다.
-// 추천 항목: 그 세션이 수집한 날짜의 공고 중 미종료·종합 매칭률 70% 이상.
+// 추천 항목: 그 세션이 수집한 날짜의 공고 중 미종료·종합 매칭률 70% 이상·회사 평점 2.8 이상.
 export async function getRecommendations(
   userId: string,
 ): Promise<{ sessionId: string | null; items: JobPosting[] }> {
@@ -56,6 +68,11 @@ export async function getRecommendations(
         .filter((j) => {
           const overall = matchOverallPercent(j.documents?.matchReport);
           return overall !== null && overall >= RECOMMEND_MIN_PERCENT;
+        })
+        .filter((j) => {
+          // 회사 평점 2.8 이상이거나, 평점이 없는(null·조회 실패) 공고는 추천에 포함한다.
+          const rating = parseRating(j.rating);
+          return rating === null || rating >= RECOMMEND_MIN_RATING;
         })
         .sort(compareJobs)
     : [];
