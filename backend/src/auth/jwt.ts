@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
+import { isUserAdmin } from "../data/store.js";
 
 // JWT_SECRET은 .env로 분리 관리한다(server.ts가 process.loadEnvFile로 로드).
 // ESM import는 server.ts의 loadEnvFile()보다 먼저 실행되므로, 시크릿은 모듈 로드 시점이 아니라
@@ -51,4 +52,18 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
   } catch {
     res.status(401).json({ error: "유효하지 않은 토큰입니다." });
   }
+}
+
+// 관리자 전용 라우트 가드. authMiddleware 뒤에 붙여 req.user가 채워진 상태를 전제로 한다.
+// 토큰의 role을 신뢰하지 않고 저장소(users.json)를 매번 확인해, 권한 회수가 즉시 반영되게 한다.
+export async function requireAdmin(req: Request, res: Response, next: NextFunction): Promise<void> {
+  if (!req.user) {
+    res.status(401).json({ error: "인증이 필요합니다." });
+    return;
+  }
+  if (!(await isUserAdmin(req.user.userId))) {
+    res.status(403).json({ error: "관리자 권한이 필요합니다." });
+    return;
+  }
+  next();
 }

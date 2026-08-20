@@ -42,7 +42,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string): Promise<Me> => {
     const result = await apiLogin(email, password);
     setToken(result.token);
-    const nextMe: Me = { userId: result.userId, email: result.email, hasProfile: result.hasProfile };
+    const nextMe: Me = {
+      userId: result.userId,
+      email: result.email,
+      hasProfile: result.hasProfile,
+      role: result.role,
+    };
     setMe(nextMe);
     return nextMe;
   }, []);

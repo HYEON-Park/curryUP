@@ -5,6 +5,7 @@ import { JobDetailPage } from "./pages/JobDetailPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ProfileViewPage } from "./pages/ProfileViewPage";
 import { ProfileEditPage } from "./pages/ProfileEditPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { useAuth } from "./auth/AuthContext";
 import { useTheme } from "./hooks/useTheme";
 import "./App.css";
@@ -85,6 +86,8 @@ function App() {
 
   return (
     <Routes>
+      {/* 비밀번호 재설정은 메일 링크로 진입하므로 로그인 여부와 무관하게 접근 가능해야 한다. */}
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/login" element={me ? <Navigate to="/" replace /> : <LoginPage />} />
       <Route
         path="/*"

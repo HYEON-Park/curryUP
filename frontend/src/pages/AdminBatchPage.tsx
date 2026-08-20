@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext";
 import {
   fetchBatchUsers,
   fetchFavoriteJobs,
@@ -633,30 +634,44 @@ function BatchTargetTab() {
 type AdminTab = "dashboard" | "favorites" | "batch" | "batch-targets";
 
 export function AdminBatchPage() {
-  const [tab, setTab] = useState<AdminTab>("batch");
+  const { me } = useAuth();
+  // "배치 모니터링 및 제어"·"배치 대상 등록" 두 탭은 ADMIN 전용이다(백엔드도 requireAdmin로 이중 보호).
+  // 일반 유저는 "대쉬보드 관리"·"즐겨찾기 관리"만 볼 수 있고, 기본 탭도 대쉬보드 관리로 연다.
+  const isAdmin = me?.role === "ADMIN";
+  const [tab, setTab] = useState<AdminTab>(isAdmin ? "batch" : "dashboard");
+
+  // 혹시라도 상태가 ADMIN 전용 탭을 가리키면(권한 변화 등) 일반 유저에게는 대쉬보드로 강등한다.
+  const effectiveTab: AdminTab = !isAdmin && (tab === "batch" || tab === "batch-targets") ? "dashboard" : tab;
 
   return (
     <div className="admin-batch">
       <h2>관리자</h2>
       <div className="admin-tabs">
-        <button className={tab === "dashboard" ? "active" : ""} onClick={() => setTab("dashboard")}>
+        <button className={effectiveTab === "dashboard" ? "active" : ""} onClick={() => setTab("dashboard")}>
           대쉬보드 관리
         </button>
-        <button className={tab === "favorites" ? "active" : ""} onClick={() => setTab("favorites")}>
+        <button className={effectiveTab === "favorites" ? "active" : ""} onClick={() => setTab("favorites")}>
           즐겨찾기 관리
         </button>
-        <button className={tab === "batch" ? "active" : ""} onClick={() => setTab("batch")}>
-          배치 모니터링 및 제어
-        </button>
-        <button className={tab === "batch-targets" ? "active" : ""} onClick={() => setTab("batch-targets")}>
-          배치 대상 등록
-        </button>
+        {isAdmin && (
+          <button className={effectiveTab === "batch" ? "active" : ""} onClick={() => setTab("batch")}>
+            배치 모니터링 및 제어
+          </button>
+        )}
+        {isAdmin && (
+          <button
+            className={effectiveTab === "batch-targets" ? "active" : ""}
+            onClick={() => setTab("batch-targets")}
+          >
+            배치 대상 등록
+          </button>
+        )}
       </div>
-      {tab === "dashboard" ? (
+      {effectiveTab === "dashboard" ? (
         <DashboardManagementTab />
-      ) : tab === "favorites" ? (
+      ) : effectiveTab === "favorites" ? (
         <FavoritesTab />
-      ) : tab === "batch" ? (
+      ) : effectiveTab === "batch" ? (
         <BatchMonitoringTab />
       ) : (
         <BatchTargetTab />

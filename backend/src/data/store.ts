@@ -64,9 +64,53 @@ export interface User {
   // 관리자 페이지에서 이 유저를 자동 배치(수집·매칭률·문서작성·알림·종료점검) 대상으로 등록했는지.
   // true인 유저만 스케줄 배치가 돈다(getBatchUserIds). 필드가 없으면 미등록(대상 아님)으로 본다.
   batchEnabled?: boolean;
+  // 권한. 전역 대상 관리자 라우트(배치 대상 등록 등)는 ADMIN만 접근 가능하다.
+  // 필드가 없으면 일반 유저(USER)로 본다. 부트스트랩용으로 .env ADMIN_EMAILS 화이트리스트도 함께 인정한다.
+  role?: UserRole;
   emailVerified: boolean;
   verifyToken: string | null;
   verifyExpires: string | null; // ISO
+  // 비밀번호 재설정 토큰(이메일 인증 토큰과 별도). 발급 시 채우고, 재설정 완료·미요청이면 null.
+  resetToken?: string | null;
+  resetExpires?: string | null; // ISO
+}
+
+export type UserRole = "USER" | "ADMIN";
+
+// .env ADMIN_EMAILS(쉼표구분)에 든 이메일은 users.json의 role과 무관하게 관리자로 인정한다.
+// 최초 관리자를 users.json 직접 수정 없이 지정하기 위한 부트스트랩 경로다.
+function adminEmailWhitelist(): Set<string> {
+  return new Set(
+    (process.env.ADMIN_EMAILS ?? "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean)
+  );
+}
+
+// 유저의 실효 권한을 계산한다(저장된 role 또는 ADMIN_EMAILS 화이트리스트면 ADMIN).
+export function resolveUserRole(user: Pick<User, "email" | "role">): UserRole {
+  if (user.role === "ADMIN") return "ADMIN";
+  if (adminEmailWhitelist().has(user.email)) return "ADMIN";
+  return "USER";
+}
+
+// 해당 유저가 관리자인지 판정한다. 토큰이 아니라 저장소를 매번 확인하므로,
+// 권한을 회수하면 기존 토큰에도 즉시 반영된다(requireAdmin 미들웨어가 사용).
+export async function isUserAdmin(userId: string): Promise<boolean> {
+  const user = await findUserById(userId);
+  if (!user) return false;
+  return resolveUserRole(user) === "ADMIN";
+}
+
+// 로그인 시 화이트리스트 이메일이면 users.json의 role을 ADMIN으로 승격해 영속화한다(PRD 3.4).
+// 이미 ADMIN이거나 화이트리스트가 아니면 아무 것도 하지 않는다.
+export async function syncAdminRoleFromWhitelist(userId: string): Promise<void> {
+  const user = await findUserById(userId);
+  if (!user) return;
+  if (user.role !== "ADMIN" && adminEmailWhitelist().has(user.email)) {
+    await updateUser(userId, { role: "ADMIN" });
+  }
 }
 
 async function readUsers(): Promise<User[]> {
@@ -109,6 +153,21 @@ export async function updateUser(userId: string, patch: Partial<User>): Promise<
 // 이메일 인증 토큰으로 유저를 찾는다(인증 링크 처리용).
 export async function findUserByVerifyToken(token: string): Promise<User | undefined> {
   return (await readUsers()).find((u) => u.verifyToken === token);
+}
+
+// 비밀번호 재설정 토큰으로 유저를 찾는다(재설정 링크 처리용).
+export async function findUserByResetToken(token: string): Promise<User | undefined> {
+  return (await readUsers()).find((u) => u.resetToken === token);
+}
+
+// 재설정 토큰 발급/저장.
+export async function setResetToken(userId: string, token: string, expires: string): Promise<void> {
+  await updateUser(userId, { resetToken: token, resetExpires: expires });
+}
+
+// 비밀번호를 새 해시로 교체하고 재설정 토큰을 소거한다(재사용 방지).
+export async function updatePassword(userId: string, passwordHash: string): Promise<void> {
+  await updateUser(userId, { password: passwordHash, resetToken: null, resetExpires: null });
 }
 
 // 자동 배치(스크래핑/매칭률/문서작성/알림/종료점검) 대상 유저 목록.

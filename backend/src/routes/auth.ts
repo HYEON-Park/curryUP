@@ -2,14 +2,20 @@ import { randomUUID } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { Router, type Request } from "express";
 import { authMiddleware, signToken } from "../auth/jwt.js";
-import { isMailConfigured, sendVerificationEmail } from "../auth/mailer.js";
+import { isMailConfigured, sendPasswordResetEmail, sendVerificationEmail } from "../auth/mailer.js";
 import {
   findUserByEmail,
+  findUserById,
+  findUserByResetToken,
   findUserByVerifyToken,
   getProfile,
   isProfileConfigured,
+  resolveUserRole,
   saveUser,
   setLastLogin,
+  setResetToken,
+  syncAdminRoleFromWhitelist,
+  updatePassword,
   updateUser,
   type User,
 } from "../data/store.js";
@@ -21,6 +27,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const BCRYPT_COST = 10;
 const PORT = process.env.PORT || 4000;
 const VERIFY_TTL_MS = 24 * 60 * 60 * 1000; // 24시간
+const RESET_TTL_MS = 60 * 60 * 1000; // 1시간
 
 function makeVerification(): { token: string; expires: string } {
   return { token: randomUUID(), expires: new Date(Date.now() + VERIFY_TTL_MS).toISOString() };
@@ -28,6 +35,11 @@ function makeVerification(): { token: string; expires: string } {
 
 function verifyLink(token: string): string {
   return `${getBaseUrl(PORT)}/api/auth/verify?token=${token}`;
+}
+
+// 재설정 링크는 프런트 재설정 페이지(/reset-password?token=...)를 가리킨다.
+function resetLink(token: string): string {
+  return `${getBaseUrl(PORT)}/reset-password?token=${token}`;
 }
 
 // 이 로그인 요청이 로컬(localhost/LAN)에서 왔는지 판별한다.
@@ -107,9 +119,12 @@ authRouter.post("/login", async (req, res) => {
   }
 
   await setLastLogin(user.userId, isLocalRequest(req));
+  // 화이트리스트(.env ADMIN_EMAILS) 이메일이면 로그인 시점에 role을 ADMIN으로 승격·영속화한다(PRD 3.4).
+  await syncAdminRoleFromWhitelist(user.userId);
+  const role = resolveUserRole(user);
   const token = signToken({ userId: user.userId, email: user.email });
   const hasProfile = isProfileConfigured(await getProfile(user.userId));
-  res.json({ token, userId: user.userId, email: user.email, hasProfile });
+  res.json({ token, userId: user.userId, email: user.email, hasProfile, role });
 });
 
 // 이메일 인증 링크 클릭 처리. 성공/실패 후 프런트 로그인 화면으로 리다이렉트한다.
@@ -141,9 +156,48 @@ authRouter.post("/resend", async (req, res) => {
   res.json({ ok: true });
 });
 
+// 비밀번호 재설정 요청. 이메일 존재 여부를 노출하지 않도록 항상 200으로 응답한다.
+// 존재하는 계정이면 1시간 유효 토큰을 발급하고 재설정 링크를 메일로 보낸다.
+authRouter.post("/forgot-password", async (req, res) => {
+  const email = String(req.body?.email ?? "").trim().toLowerCase();
+  const user = await findUserByEmail(email);
+  if (user) {
+    const token = randomUUID();
+    const expires = new Date(Date.now() + RESET_TTL_MS).toISOString();
+    await setResetToken(user.userId, token, expires);
+    const link = resetLink(token);
+    await sendPasswordResetEmail(email, link);
+    // SMTP 미설정(개발)일 때만 링크를 응답에 실어 바로 테스트할 수 있게 한다.
+    res.json({ ok: true, devLink: isMailConfigured() ? undefined : link });
+    return;
+  }
+  res.json({ ok: true });
+});
+
+// 재설정 링크의 토큰으로 새 비밀번호를 설정한다. 토큰이 없거나 만료면 400.
+authRouter.post("/reset-password", async (req, res) => {
+  const token = String(req.body?.token ?? "");
+  const password = String(req.body?.password ?? "");
+  if (password.length < 8 || password.length > 64) {
+    res.status(400).json({ error: "비밀번호는 8자 이상 64자 이하여야 합니다." });
+    return;
+  }
+  const user = token ? await findUserByResetToken(token) : undefined;
+  const expired = user?.resetExpires ? new Date(user.resetExpires).getTime() < Date.now() : true;
+  if (!user || expired) {
+    res.status(400).json({ error: "재설정 링크가 유효하지 않거나 만료되었습니다. 다시 요청해주세요." });
+    return;
+  }
+  const hash = await bcrypt.hash(password, BCRYPT_COST);
+  await updatePassword(user.userId, hash);
+  res.json({ ok: true });
+});
+
 // 내 정보 + 프로필 작성 여부. 새로고침·URL 직접 진입 시 프런트 라우트 가드가 호출한다.
 authRouter.get("/me", authMiddleware, async (req, res) => {
   const { userId, email } = req.user!;
   const hasProfile = isProfileConfigured(await getProfile(userId));
-  res.json({ userId, email, hasProfile });
+  const dbUser = await findUserById(userId);
+  const role = dbUser ? resolveUserRole(dbUser) : "USER";
+  res.json({ userId, email, hasProfile, role });
 });

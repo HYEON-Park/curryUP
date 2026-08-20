@@ -38,10 +38,13 @@ function jsonHeaders(): Record<string, string> {
 
 // ==================== 인증 (auth) ====================
 
+export type UserRole = "USER" | "ADMIN";
+
 export interface Me {
   userId: string;
   email: string;
   hasProfile: boolean;
+  role: UserRole;
 }
 
 export async function signup(
@@ -81,7 +84,7 @@ export class LoginError extends Error {
 export async function login(
   email: string,
   password: string
-): Promise<{ token: string; userId: string; email: string; hasProfile: boolean }> {
+): Promise<{ token: string; userId: string; email: string; hasProfile: boolean; role: UserRole }> {
   const res = await fetch(`${BASE_URL}/auth/login`, {
     method: "POST",
     headers: jsonHeaders(),
@@ -97,6 +100,30 @@ export async function login(
 export async function fetchMe(): Promise<Me> {
   const res = await authFetch(`/auth/me`);
   return res.json();
+}
+
+// 비밀번호 재설정 요청. 계정 존재 여부를 노출하지 않으려 서버는 항상 성공으로 응답한다.
+// SMTP 미설정(개발) 시 devLink가 실려 온다.
+export async function forgotPassword(email: string): Promise<{ devLink?: string }> {
+  const res = await fetch(`${BASE_URL}/auth/forgot-password`, {
+    method: "POST",
+    headers: jsonHeaders(),
+    body: JSON.stringify({ email }),
+  });
+  return res.json().catch(() => ({}));
+}
+
+// 재설정 토큰 + 새 비밀번호로 변경한다. 실패 시 서버 메시지로 에러를 던진다.
+export async function resetPassword(token: string, password: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/auth/reset-password`, {
+    method: "POST",
+    headers: jsonHeaders(),
+    body: JSON.stringify({ token, password }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error ?? "비밀번호 재설정에 실패했습니다.");
+  }
 }
 
 // ==================== 프로필 ====================

@@ -126,3 +126,22 @@ export async function sendVerificationEmail(to: string, link: string): Promise<v
 <p style="color:#888;font-size:12px">본인이 요청하지 않았다면 무시하세요.</p>`,
   });
 }
+
+// 비밀번호 재설정 메일. link는 프런트 재설정 페이지(/reset-password?token=...)를 가리킨다.
+export async function sendPasswordResetEmail(to: string, link: string): Promise<void> {
+  if (!isMailConfigured()) {
+    console.log(`[mailer] SMTP 미설정 — 비밀번호 재설정 메일 미발송. 재설정 링크(${to}): ${link}`);
+    return;
+  }
+  const from = process.env.MAIL_FROM || process.env.SMTP_USER;
+  await getTransporter().sendMail({
+    from,
+    to,
+    subject: "[curryUP] 비밀번호 재설정 안내",
+    text: `아래 링크를 눌러 비밀번호를 재설정해주세요 (1시간 내 유효):\n\n${link}\n\n본인이 요청하지 않았다면 무시하세요.`,
+    html: `<p>아래 버튼을 눌러 비밀번호를 재설정해주세요 <b>(1시간 내 유효)</b>.</p>
+<p><a href="${link}" style="display:inline-block;padding:10px 18px;background:#3f6fd1;color:#fff;text-decoration:none;border-radius:6px">비밀번호 재설정하기</a></p>
+<p>버튼이 안 되면 이 링크를 브라우저에 붙여넣으세요:<br><a href="${link}">${link}</a></p>
+<p style="color:#888;font-size:12px">본인이 요청하지 않았다면 무시하세요. 이 링크로는 비밀번호만 변경할 수 있습니다.</p>`,
+  });
+}

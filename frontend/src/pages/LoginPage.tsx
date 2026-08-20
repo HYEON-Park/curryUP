@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { LoginError, resendVerification, signup } from "../api/client";
+import { forgotPassword, LoginError, resendVerification, signup } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
-type Mode = "login" | "signup";
+type Mode = "login" | "signup" | "forgot";
 
 export function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
   const [searchParams] = useSearchParams();
   const verified = searchParams.get("verified"); // "1" 성공 / "0" 실패
+  const reset = searchParams.get("reset"); // "1" 비밀번호 재설정 완료
 
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
@@ -22,11 +23,21 @@ export function LoginPage() {
   const [devLink, setDevLink] = useState<string | null>(null);
   const [resendMsg, setResendMsg] = useState<string | null>(null);
 
+  // 비밀번호 재설정 요청 완료 화면 상태.
+  const [forgotSentEmail, setForgotSentEmail] = useState<string | null>(null);
+  const [forgotDevLink, setForgotDevLink] = useState<string | null>(null);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setBusy(true);
     try {
+      if (mode === "forgot") {
+        const { devLink } = await forgotPassword(email);
+        setForgotSentEmail(email);
+        setForgotDevLink(devLink ?? null);
+        return;
+      }
       if (mode === "signup") {
         if (password.length < 8 || password.length > 64) {
           setError("비밀번호는 8자 이상 64자 이하여야 합니다.");
@@ -64,6 +75,42 @@ export function LoginPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  // ─── 비밀번호 재설정 요청 완료 화면 ──────────────────────────────────────
+  if (forgotSentEmail) {
+    return (
+      <div className="auth-page">
+        <div className="auth-card">
+          <h1 className="auth-title">비밀번호 재설정</h1>
+          <p className="auth-subtitle">
+            해당 이메일로 가입된 계정이 있다면 <b>{forgotSentEmail}</b> 로 재설정 링크를 보냈습니다.
+            <br />
+            메일의 링크를 클릭해 새 비밀번호를 설정하세요. (1시간 내 유효)
+          </p>
+
+          {forgotDevLink && (
+            <p className="auth-devlink">
+              (개발용) SMTP 미설정 상태입니다. 아래 링크로 바로 재설정하세요:
+              <br />
+              <a href={forgotDevLink}>비밀번호 재설정 링크 열기</a>
+            </p>
+          )}
+
+          <button
+            type="button"
+            className="auth-toggle"
+            onClick={() => {
+              setForgotSentEmail(null);
+              setForgotDevLink(null);
+              setMode("login");
+            }}
+          >
+            로그인으로 돌아가기
+          </button>
+        </div>
+      </div>
+    );
   }
 
   // ─── 이메일 인증 대기 화면 ───────────────────────────────────────────────
@@ -114,10 +161,17 @@ export function LoginPage() {
         <h1 className="auth-title">
           curry<span className="wordmark-up">UP</span>
         </h1>
-        <p className="auth-subtitle">{mode === "login" ? "이메일로 로그인" : "이메일로 회원가입"}</p>
+        <p className="auth-subtitle">
+          {mode === "login"
+            ? "이메일로 로그인"
+            : mode === "signup"
+              ? "이메일로 회원가입"
+              : "가입한 이메일로 재설정 링크를 받습니다"}
+        </p>
 
         {verified === "1" && <p className="auth-notice">이메일 인증이 완료되었습니다. 로그인해주세요.</p>}
         {verified === "0" && <p className="auth-error">인증 링크가 유효하지 않거나 만료되었습니다. 다시 시도해주세요.</p>}
+        {reset === "1" && <p className="auth-notice">비밀번호가 변경되었습니다. 새 비밀번호로 로그인해주세요.</p>}
 
         <label className="auth-label">
           이메일
@@ -130,24 +184,45 @@ export function LoginPage() {
           />
         </label>
 
-        <label className="auth-label">
-          비밀번호
-          <input
-            type="password"
-            autoComplete={mode === "login" ? "current-password" : "new-password"}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            minLength={8}
-            maxLength={64}
-            required
-          />
-        </label>
+        {mode !== "forgot" && (
+          <label className="auth-label">
+            비밀번호
+            <input
+              type="password"
+              autoComplete={mode === "login" ? "current-password" : "new-password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              minLength={8}
+              maxLength={64}
+              required
+            />
+          </label>
+        )}
 
         {error && <p className="auth-error">{error}</p>}
 
         <button type="submit" className="auth-submit" disabled={busy}>
-          {busy ? "처리 중..." : mode === "login" ? "로그인" : "회원가입"}
+          {busy
+            ? "처리 중..."
+            : mode === "login"
+              ? "로그인"
+              : mode === "signup"
+                ? "회원가입"
+                : "재설정 링크 받기"}
         </button>
+
+        {mode === "login" && (
+          <button
+            type="button"
+            className="auth-toggle"
+            onClick={() => {
+              setMode("forgot");
+              setError(null);
+            }}
+          >
+            비밀번호를 잊으셨나요?
+          </button>
+        )}
 
         <button
           type="button"
