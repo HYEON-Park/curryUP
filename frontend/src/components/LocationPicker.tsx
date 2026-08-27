@@ -30,6 +30,7 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
     <div className="location-picker">
       <div className="location-picker-controls">
         <select
+          aria-label="시/도 선택"
           value={sido}
           onChange={(e) => {
             setSido(e.target.value);
@@ -44,7 +45,12 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
           ))}
         </select>
 
-        <select value={sigungu} onChange={(e) => setSigungu(e.target.value)} disabled={!sido}>
+        <select
+          aria-label="시/군/구 선택"
+          value={sigungu}
+          onChange={(e) => setSigungu(e.target.value)}
+          disabled={!sido}
+        >
           <option value="">시/군/구 (선택 안 해도 됨)</option>
           {districts.map((d) => (
             <option key={d} value={d}>

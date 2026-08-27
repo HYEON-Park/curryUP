@@ -255,7 +255,7 @@ export function JobDetailPage() {
                   >
                     {TAB_LABELS[activeTab]} 생성
                   </button>
-                  {genError && <p className="doc-generate-error">{genError}</p>}
+                  {genError && <p className="doc-generate-error" role="alert">{genError}</p>}
                 </>
               )}
             </div>

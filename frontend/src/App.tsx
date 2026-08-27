@@ -32,6 +32,7 @@ function AuthedApp({ theme, toggle }: { theme: string; toggle: () => void }) {
 
   return (
     <div>
+      <a href="#main-content" className="skip-link">본문으로 건너뛰기</a>
       <header className="topbar">
         <Link to="/" className="wordmark-link" aria-label="대시보드로 이동">
           <Wordmark />
@@ -62,15 +63,17 @@ function AuthedApp({ theme, toggle }: { theme: string; toggle: () => void }) {
           로그아웃
         </button>
       </header>
-      <Routes>
-        <Route path="/" element={<DashboardPage />} />
-        <Route path="/jobs/:id" element={<JobDetailPage />} />
-        <Route path="/profile" element={<ProfileViewPage />} />
-        <Route path="/profile/edit" element={<ProfileEditPage />} />
-        <Route path="/profile/setup" element={<ProfileEditPage />} />
-        <Route path="/admin" element={<AdminBatchPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <main id="main-content">
+        <Routes>
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/jobs/:id" element={<JobDetailPage />} />
+          <Route path="/profile" element={<ProfileViewPage />} />
+          <Route path="/profile/edit" element={<ProfileEditPage />} />
+          <Route path="/profile/setup" element={<ProfileEditPage />} />
+          <Route path="/admin" element={<AdminBatchPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
     </div>
   );
 }

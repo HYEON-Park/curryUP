@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactElement } from "react";
 import type { EducationCategory, EducationEntry, EducationInfo } from "../types";
 import {
   DAY_NIGHT_OPTIONS,
@@ -111,7 +111,7 @@ export function EducationForm({ value, onChange }: EducationFormProps) {
     index: number,
     key: "gpa" | "subMajor" | "dayNight",
     addLabel: string,
-    render: (e: EducationEntry) => JSX.Element
+    render: (e: EducationEntry) => ReactElement
   ) {
     const e = educations[index];
     if (e[key] === undefined) {

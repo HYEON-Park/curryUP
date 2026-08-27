@@ -1,3 +1,58 @@
+/* 시각적으로 감추되 스크린리더에는 읽히는 텍스트(빈 표 헤더 등에 사용). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* 모션 최소화 설정 사용자에게는 전환·애니메이션을 사실상 제거한다. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* 키보드 포커스 공통 표시. 마우스 클릭(:focus)에는 안 뜨고 키보드 이동 시에만 링을 그린다.
+   텍스트 입력·검색·필터 셀렉트는 각자 box-shadow 링이 있어 여기서 제외한다. */
+button:focus-visible,
+a:focus-visible,
+select:not(.search-input):not(.filter-select):focus-visible,
+[tabindex]:focus-visible,
+input[type="checkbox"]:focus-visible,
+input[type="file"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* 키보드 사용자용 본문 건너뛰기 링크: 평소 화면 밖, 포커스 시 좌상단에 노출. */
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -60px;
+  z-index: 1000;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+  text-decoration: none;
+  transition: top 0.15s;
+}
+.skip-link:focus {
+  top: 8px;
+}
+
 /* ── TopBar (전 화면 공통 셸 상단, 56px) ───────────────────────── */
 .topbar {
   display: flex;
@@ -315,6 +370,7 @@ button[type="submit"] {
 .filter-select:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
 }
 
 .dashboard-main {
@@ -348,6 +404,7 @@ button[type="submit"] {
 .search-input:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
 }
 
 .btn-update {
@@ -486,6 +543,23 @@ button[type="submit"] {
 
 .job-card:hover {
   box-shadow: 0 0 0 1px var(--accent), 0 4px 14px rgba(0, 0, 0, 0.07);
+}
+
+/* stretched-link: 카드를 덮는 투명 이동 링크. 텍스트는 이 아래로 비쳐 보이고
+   클릭은 링크가 받는다(카드 전체 클릭 = 상세 이동). 액션 버튼은 이 위로 올린다. */
+.job-card-link {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+}
+.job-card-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.job-card-actions {
+  position: relative;
+  z-index: 1;
 }
 
 /* 강조: 즐겨찾기 공고 또는 매칭률 종합 70% 이상 */
@@ -1560,6 +1634,11 @@ button[type="submit"] {
 
 .run-row-clickable:hover {
   background: var(--accent-bg);
+}
+
+.run-row-clickable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .status-badge {

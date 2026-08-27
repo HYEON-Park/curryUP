@@ -165,11 +165,12 @@ export function DashboardPage() {
         onMatchThresholdChange={setMatchThreshold}
       />
 
-      <main className="dashboard-main">
+      <div className="dashboard-main">
         <div className="dashboard-searchrow">
           <input
             type="text"
             className="search-input"
+            aria-label="공고 검색"
             placeholder="회사명·공고명·지역으로 검색"
             value={filters.searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -178,7 +179,7 @@ export function DashboardPage() {
             {collecting ? "UPDATE 중..." : "공고 UPDATE"}
           </button>
         </div>
-        {collectStatus && <p className="collect-status">{collectStatus}</p>}
+        {collectStatus && <p className="collect-status" role="status">{collectStatus}</p>}
 
         {isEmpty && !isFiltering ? (
           <p className="dashboard-empty">
@@ -227,7 +228,7 @@ export function DashboardPage() {
             </div>
           </>
         )}
-      </main>
+      </div>
 
       {recOpen && <RecommendationModal items={recItems} onClose={handleRecClose} />}
     </div>

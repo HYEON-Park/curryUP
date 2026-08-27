@@ -79,12 +79,19 @@ export function JobCard({ job, highlighted, today, onFavorite, onDelete }: JobCa
     return <div className="job-card job-card-disabled">{inner}</div>;
   }
 
+  // 카드 전체를 링크로 감싸면 <a> 안에 ★/✕ 버튼이 중첩돼 유효하지 않은 마크업이 된다.
+  // stretched-link 패턴: 카드는 div로 두고, 카드를 덮는 투명 오버레이 <Link>로 이동을 처리하고
+  // 액션 버튼은 오버레이 위(z-index)에 올려 별개 컨트롤로 남긴다.
   return (
-    <Link
-      to={`/jobs/${job.id}`}
+    <div
       className={`job-card${highlighted ? " job-card-highlight" : ""}${today ? " job-card-today" : ""}`}
     >
+      <Link
+        to={`/jobs/${job.id}`}
+        className="job-card-link"
+        aria-label={`${job.company} ${job.title} 상세 보기`}
+      />
       {inner}
-    </Link>
+    </div>
   );
 }

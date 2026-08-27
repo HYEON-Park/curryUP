@@ -123,7 +123,7 @@ export function MatchReport({ text }: { text: string }) {
                 <div className="match-row-head">
                   <span className="match-row-label">{c.label}</span>
                   <span className="match-row-grade" style={{ color }}>
-                    {"🌶️".repeat(chiliCount(c.grade))} {c.grade}
+                    <span aria-hidden>{"🌶️".repeat(chiliCount(c.grade))}</span> {c.grade}
                   </span>
                 </div>
                 <div className="match-bar-track">

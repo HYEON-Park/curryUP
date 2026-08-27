@@ -170,6 +170,7 @@ function DashboardManagementTab() {
             <th>
               <input
                 type="checkbox"
+                aria-label="이 페이지 전체 선택"
                 ref={checkAllRef}
                 checked={allOnPageSelected}
                 onChange={(e) => toggleAll(e.target.checked)}
@@ -179,7 +180,7 @@ function DashboardManagementTab() {
             <th>공고 제목</th>
             <th>지역</th>
             <th>삭제일</th>
-            <th></th>
+            <th><span className="sr-only">복구</span></th>
           </tr>
         </thead>
         <tbody>
@@ -188,6 +189,7 @@ function DashboardManagementTab() {
               <td>
                 <input
                   type="checkbox"
+                  aria-label={`${job.company} ${job.title} 선택`}
                   checked={selected.has(job.id)}
                   onChange={(e) => toggleOne(job.id, e.target.checked)}
                 />
@@ -267,7 +269,7 @@ function FavoritesTab() {
           <th>공고 제목</th>
           <th>지역</th>
           <th>마감일</th>
-          <th></th>
+          <th><span className="sr-only">즐겨찾기 해제</span></th>
         </tr>
       </thead>
       <tbody>
@@ -461,7 +463,7 @@ function BatchMonitoringTab() {
         </div>
       </div>
 
-      {actionStatus && <p className="admin-status">{actionStatus}</p>}
+      {actionStatus && <p className="admin-status" role="status">{actionStatus}</p>}
 
       <table className="run-table">
         <thead>
@@ -474,18 +476,21 @@ function BatchMonitoringTab() {
           </tr>
         </thead>
         <tbody>
-          {items.map((run) => (
+          {items.map((run) => {
+            const expandable = run.status === "failed" || (run.closedJobs?.length ?? 0) > 0;
+            return (
             <Fragment key={run.id}>
               <tr
-                className={
-                  run.status === "failed" || (run.closedJobs?.length ?? 0) > 0
-                    ? "run-row-clickable"
-                    : undefined
-                }
-                onClick={() =>
-                  (run.status === "failed" || (run.closedJobs?.length ?? 0) > 0) &&
-                  toggleExpand(run.id)
-                }
+                className={expandable ? "run-row-clickable" : undefined}
+                tabIndex={expandable ? 0 : undefined}
+                aria-expanded={expandable ? expanded.has(run.id) : undefined}
+                onClick={() => expandable && toggleExpand(run.id)}
+                onKeyDown={(e) => {
+                  if (expandable && (e.key === "Enter" || e.key === " ")) {
+                    e.preventDefault();
+                    toggleExpand(run.id);
+                  }
+                }}
               >
                 <td>{JOB_LABELS[run.jobName] ?? run.jobName}</td>
                 <td>{formatDate(run.date)}</td>
@@ -517,7 +522,8 @@ function BatchMonitoringTab() {
                   </tr>
                 ) : null)}
             </Fragment>
-          ))}
+            );
+          })}
         </tbody>
       </table>
 
@@ -591,7 +597,7 @@ function BatchTargetTab() {
       <p className="admin-status">
         등록된 배치 대상 <b>{enabledCount}</b>명 / 전체 {users.length}명 · 등록한 사용자만 스케줄 배치가 실행됩니다.
       </p>
-      {error && <p className="doc-generate-error">{error}</p>}
+      {error && <p className="doc-generate-error" role="alert">{error}</p>}
       <table className="run-table">
         <thead>
           <tr>

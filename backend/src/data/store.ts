@@ -10,7 +10,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // 데이터는 backend/src/data/ 아래에 둔다(기존 경로 유지). 유저별 데이터는 카테고리 폴더 안에
 // {userId}.json 개별 파일로 분리해, A/B 유저 동시 수정 시 파일 충돌을 원천 차단한다.
-const DATA_DIR = __dirname;
+// dev(tsx: src/data)든 prod(node: dist/data)든 실행 위치와 무관하게 항상 backend/src/data를
+// 가리키게 고정한다. tsc는 .json을 dist로 복사하지 않으므로 __dirname을 그대로 쓰면
+// prod에서 dist/data(계정 없음)를 읽어 로그인이 전부 실패한다.
+const DATA_DIR = path.resolve(__dirname, "..", "..", "src", "data");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 const PROFILES_DIR = path.join(DATA_DIR, "profiles");
 const JOBS_DIR = path.join(DATA_DIR, "jobPostings");

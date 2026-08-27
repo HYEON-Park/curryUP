@@ -28,8 +28,9 @@ export function FilterRail({
   return (
     <aside className="filter-rail">
       <div className="filter-group">
-        <div className="filter-label">지역</div>
+        <label className="filter-label" htmlFor="filter-region">지역</label>
         <select
+          id="filter-region"
           className="filter-select"
           value={region}
           onChange={(e) => onRegionChange(e.target.value)}
@@ -44,8 +45,9 @@ export function FilterRail({
       </div>
 
       <div className="filter-group">
-        <div className="filter-label">매칭률</div>
+        <label className="filter-label" htmlFor="filter-threshold">매칭률</label>
         <select
+          id="filter-threshold"
           className="filter-select"
           value={matchThreshold}
           onChange={(e) => onMatchThresholdChange(Number(e.target.value) as MatchThreshold)}

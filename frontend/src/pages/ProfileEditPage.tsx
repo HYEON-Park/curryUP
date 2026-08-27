@@ -149,7 +149,7 @@ export function ProfileEditPage() {
   }, []);
 
   // fieldset으로 스크롤 후 내부 첫 조작 요소에 포커스한다.
-  function focusFieldset(ref: React.RefObject<HTMLFieldSetElement>) {
+  function focusFieldset(ref: React.RefObject<HTMLFieldSetElement | null>) {
     return () => {
       ref.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       ref.current?.querySelector<HTMLElement>("button, input, select, textarea")?.focus();
@@ -276,8 +276,14 @@ export function ProfileEditPage() {
 
       {pdfModalOpen && (
         <div className="pdf-modal-overlay" onClick={closePdfModal}>
-          <div className="pdf-modal-box" onClick={(e) => e.stopPropagation()}>
-            <h3>PDF 이력서로 프로필 읽기</h3>
+          <div
+            className="pdf-modal-box"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pdf-modal-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="pdf-modal-title">PDF 이력서로 프로필 읽기</h3>
             <p className="pdf-modal-hint">
               PDF 이력서를 업로드하면 경력·학력·스킬 등을 자동으로 읽어 폼에 채웁니다.
               <br />
@@ -292,7 +298,7 @@ export function ProfileEditPage() {
                 setPdfError(null);
               }}
             />
-            {pdfError && <p className="profile-error">{pdfError}</p>}
+            {pdfError && <p className="profile-error" role="alert">{pdfError}</p>}
             <div className="pdf-modal-actions">
               <button type="button" className="secondary" onClick={closePdfModal} disabled={pdfLoading}>
                 취소
@@ -450,7 +456,7 @@ export function ProfileEditPage() {
         </label>
       </fieldset>
 
-      {error && <p className="profile-error">{error}</p>}
+      {error && <p className="profile-error" role="alert">{error}</p>}
 
       <div className="form-actions">
         <button type="button" className="secondary" onClick={handleCancel}>

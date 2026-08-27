@@ -45,7 +45,13 @@ export function JobTitlePicker({ value, onChange, placeholder = "직무 선택" 
 
       {open && (
         <div className="job-title-modal-backdrop" onClick={() => setOpen(false)}>
-          <div className="job-title-modal" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="job-title-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="직무 선택"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="job-title-modal-head">
               <input
                 autoFocus

@@ -86,7 +86,7 @@ export function ResetPasswordPage() {
           />
         </label>
 
-        {error && <p className="auth-error">{error}</p>}
+        {error && <p className="auth-error" role="alert">{error}</p>}
 
         <button type="submit" className="auth-submit" disabled={busy}>
           {busy ? "변경 중..." : "비밀번호 변경"}
