@@ -41,7 +41,8 @@ export function useJobFilters(jobs: JobPosting[]) {
         job.title.toLowerCase().includes(term) ||
         job.location.toLowerCase().includes(term);
       const matchesRegion = filters.region === "all" || job.location === filters.region;
-      const matchesScore = scoreOf(job) >= filters.matchThreshold;
+      // 문턱 0(전체)이면 매칭률 미산정(-1) 공고도 통과시킨다. threshold>0일 때만 점수로 거른다.
+      const matchesScore = filters.matchThreshold === 0 || scoreOf(job) >= filters.matchThreshold;
       return matchesSearch && matchesRegion && matchesScore; // AND 조합
     });
   }, [jobs, filters]);

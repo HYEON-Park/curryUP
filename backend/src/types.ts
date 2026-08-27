@@ -93,6 +93,7 @@ export interface GeneratedDocuments {
   coverLetter: string;
   intro: string;
   workExperience: string;
+  coreCompetency?: string; // 핵심역량: 5초 스캔용 요약(최대 4줄, §6-1). 문서 작성 배치·단일 생성이 채운다.
   matchReport?: string; // 매칭률 사전 평가표 + 지원 권장도 (매칭률 조회 배치 또는 문서 작성 배치가 생성)
   generatedAt: string;
 }

@@ -312,7 +312,9 @@ export async function permanentDeleteAllHiddenJobs(userId: string): Promise<void
   await saveHiddenJobs(userId, []);
 }
 
-// 공고 삭제 시 연관된 생성 문서(자기소개서/경력기술서 등)도 함께 삭제한다.
+// 공고 삭제는 "숨김"(hiddenJobPostings로 이동)이라 되돌릴 수 있다. 영구 삭제가 아니므로
+// documents(매칭표·생성 문서)를 그대로 보존한다 — 복구 시 매칭률·생성 문서가 살아 있어야 한다.
+// 실제 폐기는 영구 삭제(permanentDeleteHiddenJobs/permanentDeleteAllHiddenJobs)에서만 일어난다.
 export async function hideJob(userId: string, id: string): Promise<boolean> {
   const jobs = await getJobPostings(userId);
   const idx = jobs.findIndex((j) => j.id === id);
@@ -320,7 +322,7 @@ export async function hideJob(userId: string, id: string): Promise<boolean> {
   const [job] = jobs.splice(idx, 1);
   await saveJobPostings(userId, jobs);
   const hidden = await getHiddenJobs(userId);
-  hidden.unshift({ ...job, documents: null, hiddenAt: new Date().toISOString() });
+  hidden.unshift({ ...job, hiddenAt: new Date().toISOString() });
   await saveHiddenJobs(userId, hidden);
   return true;
 }

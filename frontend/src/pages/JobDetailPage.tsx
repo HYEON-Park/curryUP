@@ -12,13 +12,14 @@ import type { JobPosting } from "../types";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const DOC_TABS = ["matchReport", "coverLetter", "intro", "workExperience"] as const;
+const DOC_TABS = ["matchReport", "coreCompetency", "coverLetter", "intro", "workExperience"] as const;
 type DocTab = (typeof DOC_TABS)[number];
 // 문서 탭(documents 기반)에 더해, 크롤링한 모집공고 원문을 보는 'posting' 탭을 맨 뒤에 둔다.
 type Tab = DocTab | "posting";
 
 const TAB_LABELS: Record<Tab, string> = {
   matchReport: "매칭표",
+  coreCompetency: "핵심역량",
   coverLetter: "자기소개서",
   intro: "소개",
   workExperience: "경력사항",

@@ -71,6 +71,7 @@ export interface GeneratedDocuments {
   coverLetter: string;
   intro: string;
   workExperience: string;
+  coreCompetency?: string;
   matchReport?: string;
   generatedAt: string;
 }
