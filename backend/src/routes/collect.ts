@@ -6,14 +6,17 @@ import { runScrapeAndMatch } from "../pipeline/runScrapeAndMatch.js";
 import { runMatchCheckIfNeeded } from "../scheduler/matchCheckJob.js";
 import { runRatingCheckNow } from "../scheduler/ratingCheckJob.js";
 import { runManualJob } from "../scheduler/runLog.js";
+import { runWriteDocumentsIfNeeded } from "../scheduler/writeDocumentsJob.js";
 import { getRecommendations } from "../utils/recommendations.js";
 
 export const collectRouter = Router();
 collectRouter.use(authMiddleware);
 const JOB_NAME = "collect";
 
-// 문서 생성은 별도 문서 작성 배치가 담당한다. 여기서 동시에 트리거하면 배치와 동시에
-// jobPostings.json을 써서 데이터가 덮어써질 수 있어 분리해둔다.
+// UPDATE 체인: 수집 → 매칭률 조회 → 평점 조회 → 추천공고 메일 → 문서 작성 배치를 .then으로 순차
+// 실행한다. 배치가 동시에 jobPostings.json을 쓰면 데이터가 덮어써지므로, 반드시 순차로만 이어 붙인다
+// (동시 트리거 금지). 문서 작성은 평점 조회로 확정된 오늘의 추천공고(매칭률 70%+·평점 2.8+)와 즐겨찾기의
+// 핵심역량/자기소개서/소개/경력사항을 채운다.
 collectRouter.post("/", async (req, res) => {
   const userId = req.user!.userId;
   // 프로필이 없으면 매칭 기준이 없어 수집·매칭률·문서 작성을 돌릴 수 없다(프런트도 동일 가드).
@@ -48,7 +51,11 @@ collectRouter.post("/", async (req, res) => {
         items,
       );
     })
-    .catch((error) => console.error("[manual collect] match/rating/mail failed:", error));
+    // 평점 조회로 확정된 오늘의 추천공고(매칭률 70%+·평점 2.8+)와 즐겨찾기 공고에 대해 문서 작성 배치를
+    // 이어서 실행한다(핵심역량/자기소개서/소개/경력사항 채움). 앞 배치들이 모두 끝난 뒤 순차 실행되므로
+    // jobPostings.json 동시 쓰기 위험이 없다. 대상이 없으면 배치 내부에서 건너뛴다.
+    .then(() => runWriteDocumentsIfNeeded(userId))
+    .catch((error) => console.error("[manual collect] match/rating/mail/docs failed:", error));
 
   res.json(result);
 });
