@@ -19,9 +19,19 @@ import {
   updateUser,
   type User,
 } from "../data/store.js";
+import { rateLimit } from "../middleware/rateLimit.js";
 import { getBaseUrl } from "../utils/network.js";
 
 export const authRouter = Router();
+
+// 공개 터널(ngrok)로 노출되므로 인증 계열 엔드포인트에 IP 단위 시도 제한을 건다.
+// - 로그인/재설정 확정: 무차별 대입·토큰 추측 방지(15분당 20회).
+// - 메일 발송 유발(가입·인증 재발송·비밀번호 찾기): 발송 남용·계정 열거 완화(15분당 5회).
+// 로컬(localhost/LAN) 접속은 제외한다 — 개발·본인 반복 테스트가 걸리지 않도록. 로컬/터널 판정은
+// 아래 isLocalRequest 한 함수를 재사용한다(터널은 X-Forwarded-* 를 붙이므로 공개로 간주).
+const WINDOW_MS = 15 * 60 * 1000;
+const loginLimiter = rateLimit({ windowMs: WINDOW_MS, max: 20, skip: isLocalRequest, message: "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요." });
+const emailLimiter = rateLimit({ windowMs: WINDOW_MS, max: 5, skip: isLocalRequest, message: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." });
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const BCRYPT_COST = 10;
@@ -64,7 +74,7 @@ function isLocalRequest(req: Request): boolean {
 
 // 회원가입: 이메일 중복 검사 → bcrypt 해싱 → users.json 추가 → 인증 메일 발송.
 // 인증 전에는 로그인할 수 없다(login에서 차단).
-authRouter.post("/signup", async (req, res) => {
+authRouter.post("/signup", emailLimiter, async (req, res) => {
   const email = String(req.body?.email ?? "").trim().toLowerCase();
   const password = String(req.body?.password ?? "");
 
@@ -104,7 +114,7 @@ authRouter.post("/signup", async (req, res) => {
 });
 
 // 로그인: 이메일 조회 → bcrypt.compare → 이메일 인증 확인 → JWT 발급.
-authRouter.post("/login", async (req, res) => {
+authRouter.post("/login", loginLimiter, async (req, res) => {
   const email = String(req.body?.email ?? "").trim().toLowerCase();
   const password = String(req.body?.password ?? "");
 
@@ -142,7 +152,7 @@ authRouter.get("/verify", async (req, res) => {
 });
 
 // 인증 메일 재발송. 이메일 존재 여부를 노출하지 않도록 항상 200으로 응답한다.
-authRouter.post("/resend", async (req, res) => {
+authRouter.post("/resend", emailLimiter, async (req, res) => {
   const email = String(req.body?.email ?? "").trim().toLowerCase();
   const user = await findUserByEmail(email);
   if (user && !user.emailVerified) {
@@ -158,7 +168,7 @@ authRouter.post("/resend", async (req, res) => {
 
 // 비밀번호 재설정 요청. 이메일 존재 여부를 노출하지 않도록 항상 200으로 응답한다.
 // 존재하는 계정이면 1시간 유효 토큰을 발급하고 재설정 링크를 메일로 보낸다.
-authRouter.post("/forgot-password", async (req, res) => {
+authRouter.post("/forgot-password", emailLimiter, async (req, res) => {
   const email = String(req.body?.email ?? "").trim().toLowerCase();
   const user = await findUserByEmail(email);
   if (user) {
@@ -175,7 +185,7 @@ authRouter.post("/forgot-password", async (req, res) => {
 });
 
 // 재설정 링크의 토큰으로 새 비밀번호를 설정한다. 토큰이 없거나 만료면 400.
-authRouter.post("/reset-password", async (req, res) => {
+authRouter.post("/reset-password", loginLimiter, async (req, res) => {
   const token = String(req.body?.token ?? "");
   const password = String(req.body?.password ?? "");
   if (password.length < 8 || password.length > 64) {

@@ -10,8 +10,8 @@ const SKILL_MD_PATH = path.join(__dirname, "..", "..", "..", "SKILL.md");
 let cachedUrls: string[] | null = null;
 
 // "마감 임박 공고 자동 삭제" 섹션의 D-N 표기 중 최댓값을 삭제 기준일로 사용한다.
-// 섹션이 없거나 D-N 표기를 찾지 못하면 기본값을 사용한다.
-const DEFAULT_IMMINENT_THRESHOLD_DAYS = 2;
+// 섹션이 없거나 D-N 표기를 찾지 못하면 기본값(D-5)을 사용한다.
+const DEFAULT_IMMINENT_THRESHOLD_DAYS = 5;
 let cachedImminentThresholdDays: number | null = null;
 
 function parseUrls(raw: string): string[] {
@@ -23,7 +23,15 @@ function parseUrls(raw: string): string[] {
 }
 
 function parseImminentThresholdDays(raw: string): number | null {
-  const matches = [...raw.matchAll(/D-(\d+)/g)].map((m) => Number(m[1]));
+  // "# 마감 임박 공고 자동 삭제" 섹션(다음 "# " 헤딩 직전까지) 안에서만 D-N을 읽어 최댓값을 쓴다.
+  // 파일 전체를 스캔하면 다른 섹션(예: "AI 프롬프트 생성 조건"의 D-0~D-2)의 표기가 삭제 기준을 오염시킬 수 있어 범위를 한정한다.
+  const start = raw.indexOf("# 마감 임박 공고 자동 삭제");
+  if (start === -1) return null;
+  const afterHeading = raw.slice(start + 1); // 첫 "#"를 건너뛰어 이 섹션 헤딩이 다음 헤딩 탐색에 걸리지 않게 한다
+  const nextHeading = afterHeading.search(/\n#\s/);
+  const section = nextHeading === -1 ? afterHeading : afterHeading.slice(0, nextHeading);
+
+  const matches = [...section.matchAll(/D-(\d+)/g)].map((m) => Number(m[1]));
   if (matches.length === 0) return null;
   return Math.max(...matches);
 }

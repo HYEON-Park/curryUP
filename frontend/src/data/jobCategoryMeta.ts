@@ -120,7 +120,7 @@ export const ROLE_CATEGORY_GROUPS: RoleCategoryGroup[] = [
 
 // 카테고리별 연관 기술/키워드. 대표 직무 선택 시 기술 스택 필드에 추가할 수 있다.
 export const CATEGORY_SKILL_HINTS: Record<string, string[]> = {
-  "백엔드 개발": ["Java", "Spring", "Node.js", "Python", "Django", "MySQL", "PostgreSQL", "Redis", "AWS", "Kafka"],
+  "백엔드 개발": ["Java", "Spring", "Node.js", "Python", "Django", "PHP", "Laravel", "JSP", "MySQL", "PostgreSQL", "Redis", "AWS", "Kafka"],
   "프론트엔드 개발": ["JavaScript", "TypeScript", "React", "Vue.js", "Next.js", "HTML/CSS", "Webpack", "Redux"],
   "풀스택 개발": ["React", "Node.js", "TypeScript", "Spring", "PostgreSQL", "AWS", "Docker", "GraphQL"],
   "모바일 개발": ["Swift", "Kotlin", "Java", "React Native", "Flutter", "Android SDK", "iOS SDK"],

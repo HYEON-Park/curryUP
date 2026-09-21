@@ -24,6 +24,12 @@ try {
   // .env is optional; env vars may already be set in the environment
 }
 
+// 프로덕션에서 JWT_SECRET이 없으면 위조 가능한 기본 시크릿으로 서명하게 되므로 기동 자체를 막는다.
+// (jwt.getSecret도 서명 시점에 방어하지만, 여기서 미리 실패시켜 취약한 상태로 뜨는 것을 차단한다.)
+if (process.env.NODE_ENV === "production" && !process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET이 설정되지 않았습니다. 프로덕션 기동에는 backend/.env의 JWT_SECRET이 필수입니다.");
+}
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const frontendRoot = path.resolve(__dirname, "../../frontend");
 

@@ -9,8 +9,13 @@ let warnedMissingSecret = false;
 function getSecret(): string {
   const secret = process.env.JWT_SECRET;
   if (secret) return secret;
+  // 프로덕션에서 시크릿이 없으면 "알려진 기본값"으로 서명하게 되어 누구나 토큰을 위조할 수 있다.
+  // 폴백으로 조용히 넘어가지 않고 즉시 실패시켜, 취약한 서명이 나가는 것을 원천 차단한다.
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("[auth] JWT_SECRET이 설정되지 않았습니다. 프로덕션에서는 backend/.env에 반드시 설정해야 합니다.");
+  }
   if (!warnedMissingSecret) {
-    console.warn("[auth] JWT_SECRET 미설정 — 임시 기본값 사용 중. backend/.env에 JWT_SECRET을 설정하세요.");
+    console.warn("[auth] JWT_SECRET 미설정 — 임시 기본값 사용 중(개발 전용). backend/.env에 JWT_SECRET을 설정하세요.");
     warnedMissingSecret = true;
   }
   return "dev-insecure-secret-change-me";
