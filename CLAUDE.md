@@ -97,6 +97,10 @@ Start-Process -FilePath "node" -ArgumentList "--import","tsx","src/server.ts" `
   - "현재 작업 중" / "다음 할 일" / "최근 완료" 섹션을 실제 상태에 맞게 이동한다.
   - 갱신 시 상단의 "마지막 갱신" 날짜도 바꾼다.
 - 설계상 되돌리기 어려운 결정은 "주요 결정"에 배경과 함께 한 줄로 남긴다.
+- **변경사항이 있으면 작업 마무리 시 최종 답변 전에 changelog를 자동으로 기록한다.** 사용자의 별도 요청이나 확인을 기다리지 않는다. 코드·설정·문서·데이터 등 실제 변경사항이 대상이며, 변경 없는 조회·진단은 기록하지 않는다.
+  - 해당 월의 `CHANGELOG/YYYY-MM.md`에 작업 날짜로 기록한다. 월별 파일을 새로 만들면 루트 `CHANGELOG.md`에 링크를 추가한다.
+  - 항목은 소제목 + 변경 내용·검증 결과 1~2줄 + `파일: ...` 줄로 간략히 작성한다. 수정한 파일명과 신설·삭제 여부를 포함한다.
+  - 같은 작업의 항목이 이미 있으면 최종 결과에 맞게 갱신해 중복을 피한다. 개인정보·비밀값·개인 문서 본문은 기록하지 않는다. changelog 기록은 commit·push 권한을 뜻하지 않는다.
 
 ## 기존 구조 재사용 (중복 생성 금지)
 
@@ -116,6 +120,8 @@ Start-Process -FilePath "node" -ArgumentList "--import","tsx","src/server.ts" `
 
 레거시 단일 파일(멀티테넌트 이전):
 - `backend/src/data/userProfile.json`
+- `backend/src/data/userProfile.example.private.json` — 실제 경력·프로젝트·성과 정보가 있는 로컬 원본으로, 영구적으로 commit·push하지 않는다.
+- `backend/src/data/userProfile.example.json`은 개인정보 없는 예시 템플릿만 commit·push할 수 있다. 실제 사용자 값·경력·프로젝트·성과 수치를 넣은 버전은 영구 커밋 금지이며, 개인 정보는 사용자별 프로필 또는 로컬 비공개 원본에만 보관한다.
 - `backend/src/data/jobPostings.json`
 - `backend/src/data/hiddenJobPostings.json`
 - `backend/src/data/runLog.json`
@@ -133,6 +139,7 @@ Start-Process -FilePath "node" -ArgumentList "--import","tsx","src/server.ts" `
 
 아래 파일도 절대 commit·push하지 않는다.
 
+- `AI_ONBOARDING.md` — 개인 식별·운영 정보를 포함하는 로컬 참고 문서로, 영구적으로 commit·push 대상에서 제외한다. 전체 변경사항 커밋·예약 푸시 요청에도 포함하지 않는다. 이미 Git이 추적 중이어도 변경분을 스테이징하지 않으며, 로컬 파일은 유지한다.
 - `.idea/`
 - `backend/run_single_job.mts`
 - `backend/scripts/setup.zip`
