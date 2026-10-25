@@ -1,40 +1,6 @@
 import { matchTier } from "../utils/matchTier";
 
-interface Criterion {
-  label: string;
-  grade: string;
-  pct: number;
-  reason: string;
-}
-
-interface ParsedReport {
-  overall: number | null;
-  criteria: Criterion[];
-  rest: string;
-}
-
-// 등급 표현 → 백분율. "약~중"처럼 범위로 오면 양끝 평균을 쓴다.
-const GRADE_BASE: Record<string, number> = {
-  강: 100,
-  중강: 75,
-  중상: 75,
-  중: 50,
-  중약: 35,
-  약중: 35,
-  약: 25,
-  하: 25,
-  없음: 0,
-  무: 0,
-};
-
-function gradeToPct(rawGrade: string): number | null {
-  const g = rawGrade.replace(/\s/g, "");
-  if (g === "" || g === "-" || g === "—") return null; // 시그널 없음
-  const parts = g.split(/[~〜–—-]/).filter(Boolean);
-  const vals = parts.map((p) => GRADE_BASE[p]).filter((v) => v !== undefined);
-  if (vals.length === 0) return null;
-  return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
-}
+import { parseMatchReport } from "../../../backend/src/utils/matchReport";
 
 // 매칭 강도 → 고추 개수. 등급 '앞 글자' 기준: 강 🌶️×3 / 중 🌶️×2 / 약·하 🌶️×1.
 // '중강'·'중상'·'중약'처럼 중으로 시작하면 2개, '약~중'처럼 약으로 시작하면 1개.
@@ -56,47 +22,8 @@ function colorFor(pct: number | null): string {
   return "#E24B4A";
 }
 
-function parseReport(text: string): ParsedReport {
-  const overallMatch = text.match(/종합\s*매칭률\s*[:：]?\s*(\d+)\s*%/);
-  const overall = overallMatch ? Number(overallMatch[1]) : null;
-
-  const criteria: Criterion[] = [];
-  // 등급 열 위치는 헤더 행에서 찾는다. 배치 출력이 3열(| 항목 | 평가 | 근거 |)일 때도,
-  // 4열(| 구분 | 공고 요구 | 보유 여부 | 매칭도 |)처럼 변형돼도 등급 열만 올바르게 집는다.
-  let gradeIdx = 1; // 헤더를 못 찾으면 기존 3열 형식(2번째 열이 등급)으로 간주
-  for (const line of text.split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed.startsWith("|")) continue;
-    const cells = trimmed
-      .split("|")
-      .map((c) => c.trim())
-      .filter((c) => c.length > 0);
-    if (cells.length < 3) continue;
-    if (cells.every((c) => /^:?-{2,}:?$/.test(c))) continue; // 구분선
-    const headerIdx = cells.findIndex((c) => c === "평가" || c === "매칭도");
-    if (headerIdx > 0) {
-      gradeIdx = headerIdx; // 헤더 행: 등급 열 위치만 기억하고 데이터로는 쓰지 않는다
-      continue;
-    }
-    const label = cells[0];
-    const grade = cells[gradeIdx] ?? "";
-    const reason = cells.filter((_, i) => i !== 0 && i !== gradeIdx).join(" | ");
-    criteria.push({ label, grade, pct: gradeToPct(grade) ?? 0, reason });
-  }
-
-  // 차트로 뽑아낸 "매칭률 사전 평가" 블록을 제거한 나머지 본문 (강점/갭/권장도 등)
-  let rest = text;
-  const overallIdx = overallMatch ? text.indexOf(overallMatch[0]) : -1;
-  if (overallIdx >= 0) {
-    rest = text.slice(overallIdx + overallMatch![0].length);
-  }
-  rest = rest.replace(/^\s+/, "");
-
-  return { overall, criteria, rest };
-}
-
 export function MatchReport({ text }: { text: string }) {
-  const { overall, criteria, rest } = parseReport(text);
+  const { overall, criteria, rest } = parseMatchReport(text);
 
   // 파싱 실패(표가 없거나 형식이 다름) 시 원문을 그대로 노출해 정보 손실을 막는다.
   if (criteria.length === 0) {
@@ -117,7 +44,7 @@ export function MatchReport({ text }: { text: string }) {
         </div>
         <ul className="match-chart-list">
           {criteria.map((c, i) => {
-            const color = colorFor(gradeToPct(c.grade));
+            const color = colorFor(c.pct);
             return (
               <li key={i} className="match-row">
                 <div className="match-row-head">
@@ -126,9 +53,9 @@ export function MatchReport({ text }: { text: string }) {
                     <span aria-hidden>{"🌶️".repeat(chiliCount(c.grade))}</span> {c.grade}
                   </span>
                 </div>
-                <div className="match-bar-track">
+                {c.pct !== null ? <div className="match-bar-track">
                   <div className="match-bar-fill" style={{ width: `${c.pct}%`, background: color }} />
-                </div>
+                </div> : <p className="match-row-reason">평가 정보 없음</p>}
                 {c.reason && <p className="match-row-reason">{c.reason}</p>}
               </li>
             );
